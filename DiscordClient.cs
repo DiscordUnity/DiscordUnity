@@ -7,15 +7,12 @@ using System.Collections.Generic;
 using WebSocketSharp;
 using UnityEngine;
 
-//TODO: Voice
-
 namespace DiscordUnity
 {
-    public class DiscordClient : IDisposable
+    public partial class DiscordClient : IDisposable
     {
         #region Fields
         public bool isOnline { get; internal set; }
-        public bool isVoiceOnline { get { return voiceClient == null ? false : voiceClient.isOnline; } }
         public bool isBot { get; internal set; }
         public DiscordUser user { get; internal set; }
 
@@ -44,68 +41,13 @@ namespace DiscordUnity
         public DiscordPrivateChannel[] privateChannels { get { return !isOnline ? new DiscordPrivateChannel[0] : _privateChannels.Values.ToArray(); } }
         internal Dictionary<string, DiscordPrivateChannel> _privateChannels;
 
-        #region EventHanlders
-        public EventHandler<DiscordEventArgs> OnClientReady = delegate { };
-        public EventHandler<DiscordEventArgs> OnClientClosed = delegate { };
-        public EventHandler<DiscordRegionArgs> OnRegions = delegate { };
-
-        public EventHandler<DiscordDMArgs> OnDMCreated = delegate { };
-        public EventHandler<DiscordDMArgs> OnDMDeleted = delegate { };
-
-        public EventHandler<DiscordChannelArgs> OnChannelCreated = delegate { };
-        public EventHandler<DiscordChannelArgs> OnChannelUpdated = delegate { };
-        public EventHandler<DiscordChannelArgs> OnChannelDeleted = delegate { };
-
-        public EventHandler<DiscordMessageArgs> OnMessageCreated = delegate { };
-        public EventHandler<DiscordMessageArgs> OnMessageUpdated = delegate { };
-        public EventHandler<DiscordMessageArgs> OnMessageDeleted = delegate { };
-
-        public EventHandler<DiscordPresenceArgs> OnPresenceUpdated = delegate { };
-        public EventHandler<DiscordMemberArgs> OnTypingStarted = delegate { };
-        public EventHandler<DiscordMemberArgs> OnTypingStopped = delegate { };
-
-        public EventHandler<DiscordServerArgs> OnServerCreated = delegate { };
-        public EventHandler<DiscordServerArgs> OnServerUpdated = delegate { };
-        public EventHandler<DiscordServerArgs> OnServerDeleted = delegate { };
-
-        public EventHandler<DiscordMemberArgs> OnMemberJoined = delegate { };
-        public EventHandler<DiscordMemberArgs> OnMemberUpdated = delegate { };
-        public EventHandler<DiscordMemberArgs> OnMemberLeft = delegate { };
-
-        public EventHandler<DiscordMemberArgs> OnMemberBanned = delegate { };
-        public EventHandler<DiscordUserArgs> OnMemberUnbanned = delegate { };
-
-        public EventHandler<DiscordRoleArgs> OnRoleCreated = delegate { };
-        public EventHandler<DiscordRoleArgs> OnRoleUpdated = delegate { };
-        public EventHandler<DiscordRoleArgs> OnRoleDeleted = delegate { };
-
-        public EventHandler<DiscordInviteArgs> OnInviteCreated = delegate { };
-        public EventHandler<DiscordInviteArgs> OnInviteAccepted = delegate { };
-        public EventHandler<DiscordInviteArgs> OnInviteUpdated = delegate { };
-        public EventHandler<DiscordInviteArgs> OnInviteDeleted = delegate { };
-
-        public EventHandler<DiscordStatusArgs> OnStatusReceived = delegate { };
-        public EventHandler<DiscordUserArgs> OnUserUpdated = delegate { };
-        public EventHandler<DiscordUserArgs> OnProfileUpdated = delegate { };
-
-        public EventHandler<DiscordEventArgs> OnVoiceStarted = delegate { };
-        public EventHandler<DiscordEventArgs> OnVoiceStopped = delegate { };
-        public EventHandler<DiscordMemberArgs> OnVoiceState = delegate { };
-
-        public EventHandler<DiscordVoiceArgs> OnVoicePacketReceived = delegate { };
-        public EventHandler<DiscordVoiceArgs> OnVoicePacketSend = delegate { };
-
-        public EventHandler<DiscordUserSpeakingArgs> OnVoiceUserSpeaking = delegate { };
-        public EventHandler<DiscordUserArgs> OnVoiceUserLeft = delegate { };
-        #endregion
-
         internal string token;
         internal string sessionID;
         internal bool hasToken { get { return !string.IsNullOrEmpty(token); } }
         internal Queue<Action> unityInvoker;
 
         private WebSocket socket;
-        private DiscordVoiceClient voiceClient;
+        private Dictionary<string, DiscordAudioClient> audioClients;
         private int sequence = 0;
         private int heartbeat = 41250;
         private Thread heartbeatThread;
@@ -115,8 +57,6 @@ namespace DiscordUnity
         #region Events
         private void ProcessMessage(string t, string payload)
         {
-            //Debug.Log("EventType: " + t);
-
             try
             {
                 switch (t)
@@ -130,7 +70,7 @@ namespace DiscordUnity
                             SetupClient(e);
                             Debug.Log("DiscordApi Started!");
                             isOnline = true;
-                            unityInvoker.Enqueue(() => OnClientReady(this, new DiscordEventArgs() { client = this }));
+                            unityInvoker.Enqueue(() => OnClientOpened(this, new DiscordEventArgs() { client = this }));
                         }
                         break;
 
@@ -453,7 +393,7 @@ namespace DiscordUnity
                     case "VOICE_SERVER_UPDATE":
                         {
                             DiscordVoiceServerStateJSON voiceState = JsonUtility.FromJson<DiscordVoiceServerStateJSON>(payload);
-                            voiceClient.Start(_servers[voiceState.guild_id], voiceState.endpoint, voiceState.token);
+                            audioClients[voiceState.guild_id].Start(_servers[voiceState.guild_id], voiceState.endpoint, voiceState.token);
                         }
                         break;
                 }
@@ -473,9 +413,6 @@ namespace DiscordUnity
         public void Start(string email, string password)
         {
             if (isOnline) return;
-            isOnline = false;
-            isBot = false;
-            unityInvoker = new Queue<Action>();
             LoginArgs login = new LoginArgs() { email = email, password = password };
             POST("https://discordapp.com/api/auth/login", JsonUtility.ToJson(login), OnStart);
         }
@@ -483,8 +420,6 @@ namespace DiscordUnity
         public void StartBot(string botToken)
         {
             if (isOnline) return;
-            unityInvoker = new Queue<Action>();
-            isBot = true;
             token = botToken;
             StartEventListener();
         }
@@ -507,39 +442,17 @@ namespace DiscordUnity
             }
         }
 
-        public void SendVoice(float[] data)
-        {
-            voiceClient.SendVoice(data);
-        }
-
-        public void SendVoice(byte[] data)
-        {
-            voiceClient.SendVoice(data);
-        }
-
-        public bool speaking
-        {
-            get
-            {
-                return voiceClient.speaking;
-            }
-
-            set
-            {
-                voiceClient.speaking = value;
-            }
-        }
-
         public void Stop()
         {
-            if (voiceClient != null)
+            foreach (DiscordAudioClient audioClient in audioClients.Values)
             {
-                if (voiceClient.isOnline)
+                if (audioClient != null)
                 {
-                    voiceClient.Dispose();
+                    audioClient.Dispose();
                 }
             }
 
+            audioClients.Clear();
             POST("https://discordapp.com/api/auth/logout", JsonUtility.ToJson(new DiscordTokenJSON() { token = token }), null);
             socket.CloseAsync();
         }
@@ -553,7 +466,6 @@ namespace DiscordUnity
                 heartbeat = 41250;
                 token = "";
                 socket = null;
-                voiceClient = null;
                 _servers = null;
                 _privateChannels = null;
                 user = null;
@@ -679,11 +591,14 @@ namespace DiscordUnity
             GetServerRegions();
         }
 
-        public void ConnectVoice(DiscordChannel channel, bool muted = false, bool deaf = false)
+        [Obsolete("AudioClient is work in progress.", true)]
+        public void GetAudioClient(DiscordChannel channel, bool muted = false, bool deaf = false)
         {
+            string guildID = "";
             if (channel.type != DiscordChannelType.Voice) return;
-            if(voiceClient != null) if (voiceClient.isOnline) voiceClient.Dispose();
-            voiceClient = new DiscordVoiceClient(this, channel);
+            if (audioClients.ContainsKey(guildID)) if (audioClients[guildID].isOnline) audioClients[guildID].Dispose();
+            DiscordAudioClient audioClient = new DiscordAudioClient(this, channel);
+            audioClients.Add(guildID, audioClient);
 
             PayloadArgs<JoinVoiceArgs> args = new PayloadArgs<JoinVoiceArgs>()
             {
@@ -700,31 +615,6 @@ namespace DiscordUnity
             Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
             socket.Send(JsonUtility.ToJson(args));
         }
-
-        public void DisconnectVoice()
-        {
-            PayloadArgs<VoiceDisconnectArgs> args = new PayloadArgs<VoiceDisconnectArgs>()
-            {
-                op = 4,
-                d = new VoiceDisconnectArgs()
-                {
-                    guild_id = voiceClient.server.ID,
-                    channel_id = voiceClient.channel.ID,
-                    self_mute = false,
-                    self_deaf = false
-                }
-            };
-
-            voiceClient.Dispose();
-            voiceClient = null;
-            Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
-            socket.Send(JsonUtility.ToJson(args));
-        }
-
-        public void ClearVoice()
-        {
-            voiceClient.ClearVoiceQueue();
-        }
         #endregion
 
         #region Private Methods
@@ -737,6 +627,10 @@ namespace DiscordUnity
 
         private void StartEventListener()
         {
+            isOnline = false;
+            isBot = false;
+            unityInvoker = new Queue<Action>();
+            audioClients = new Dictionary<string, DiscordAudioClient>();
             GetGatewayUrl();
         }
 
@@ -813,7 +707,6 @@ namespace DiscordUnity
 
         private void SendIdentifyPacket()
         {
-            //This is the only json message that is impossible to create with unity json
             string specialJson = "{\"op\": 2,\"d\": { \"token\": \"" + token + "\", \"v\": 4, \"properties\": { \"$os\": \"" + Environment.OSVersion.ToString() + "\",\"$browser\": \"DiscordUnity\",\"$device\": \"DiscordUnity\",\"$referrer\": \"\",\"$referring_domain\":\"\"}}}";
             socket.Send(specialJson);
             Debugger.WriteLine("SocketSend: " + specialJson);
@@ -882,7 +775,7 @@ namespace DiscordUnity
 
             if (string.IsNullOrEmpty(voiceState.channel_id))
             {
-                unityInvoker.Enqueue(() => OnVoiceUserLeft(this, new DiscordUserArgs() { client = this, user = member.user }));
+                unityInvoker.Enqueue(() => audioClients[voiceState.guild_id].OnVoiceUserLeft(this, new DiscordUserArgs() { client = this, user = member.user }));
                 return;
             }
 
@@ -897,13 +790,13 @@ namespace DiscordUnity
                     {
                         _servers[voiceState.guild_id]._members[user.ID].muted = voiceState.self_mute;
                         _servers[voiceState.guild_id]._members[user.ID].deaf = voiceState.self_deaf;
-                        if (voiceClient != null) sessionID = voiceState.session_id;
+                        if (audioClients[voiceState.guild_id] != null) audioClients[voiceState.guild_id].sessionID = voiceState.session_id;
                     }
                 }
 
-                if (voiceClient != null)
+                if (audioClients[voiceState.guild_id] != null)
                 {
-                    unityInvoker.Enqueue(() => OnVoiceState(voiceClient, new DiscordMemberArgs() { client = this, member = member }));
+                    unityInvoker.Enqueue(() => audioClients[voiceState.guild_id].OnVoiceState(audioClients[voiceState.guild_id], new DiscordMemberArgs() { client = this, member = member }));
                 }
 
                 _servers[voiceState.guild_id]._members[voiceState.user_id] = member;
@@ -1493,7 +1386,7 @@ namespace DiscordUnity
                     regionList.Add(new DiscordRegion(region));
                 }
 
-                unityInvoker.Enqueue(() => OnRegions(this, new DiscordRegionArgs() { regions = regionList.ToArray(), client = this }));
+                unityInvoker.Enqueue(() => OnRegionsReceived(this, new DiscordRegionArgs() { regions = regionList.ToArray(), client = this }));
             });
         }
 

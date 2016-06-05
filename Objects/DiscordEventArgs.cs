@@ -74,6 +74,11 @@ namespace DiscordUnity
     public class DiscordUserSpeakingArgs : DiscordEventArgs
     {
         public DiscordUser user;
-        public bool speaking; 
+        public bool speaking;
+    }
+
+    public class DiscordAudioClientArgs : DiscordEventArgs
+    {
+        public DiscordAudioClient audioClient;
     }
 }

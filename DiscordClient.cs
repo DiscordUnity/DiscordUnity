@@ -831,7 +831,7 @@ namespace DiscordUnity
             public string content;
         }
 
-        internal string APIurl = "https://discordapp.com/api/";
+        internal static string APIurl = "https://discordapp.com/api/";
 
         internal void Call(HttpMethod method, string url, CallResult result = null, string content = null)
         {

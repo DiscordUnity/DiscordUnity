@@ -826,7 +826,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "POST";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { content = content, result = result, request = httpRequest });
         }
 
@@ -836,7 +836,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "POST";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
         }
 
@@ -846,7 +846,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "GET";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
         }
 
@@ -856,7 +856,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "PATCH";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { content = content, result = result, request = httpRequest });
         }
 
@@ -866,7 +866,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "PUT";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { content = content, result = result, request = httpRequest });
         }
 
@@ -876,7 +876,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "PUT";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
         }
 
@@ -886,7 +886,7 @@ namespace DiscordUnity
             if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "application/json";
             httpRequest.Method = "DELETE";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
         }
 

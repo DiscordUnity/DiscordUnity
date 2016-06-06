@@ -699,6 +699,17 @@ namespace DiscordUnity
 
             socket.OnError += (sender, e) =>
             {
+                if (e.Message.Contains("502"))
+                {
+                    Thread.Sleep(2000);
+                    StartEventListener();
+                }
+
+                if (e.Message.Contains("429"))
+                {
+
+                }
+
                 Debug.LogError("Socket error: " + e.Message);
             };
 

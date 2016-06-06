@@ -32,6 +32,11 @@ namespace DiscordUnity
         public DiscordUser user;
     }
 
+    public class DiscordSendRateArgs : DiscordEventArgs
+    {
+        public int duration;
+    }
+
     public class DiscordMemberArgs : DiscordEventArgs
     {
         public DiscordMember member;

@@ -14,6 +14,7 @@ namespace DiscordUnity
         #region Fields
         public bool isOnline { get; internal set; }
         public bool isBot { get; internal set; }
+        public bool isSendRateExceeded => blockSend;
         public DiscordUser user { get; internal set; }
 
         public DiscordServer[] servers { get { return !isOnline ? new DiscordServer[0] : _servers.Values.ToArray(); } }
@@ -43,15 +44,17 @@ namespace DiscordUnity
 
         internal string token;
         internal string sessionID;
+        internal bool blockSend = false;
         internal bool hasToken { get { return !string.IsNullOrEmpty(token); } }
         internal Queue<Action> unityInvoker;
-
+        
         private WebSocket socket;
         private Dictionary<string, DiscordAudioClient> audioClients;
         private int sequence = 0;
         private int heartbeat = 41250;
         private Thread heartbeatThread;
         private Thread typingThread;
+        private Thread blockThread;
         #endregion
 
         #region Events
@@ -414,7 +417,7 @@ namespace DiscordUnity
         {
             if (isOnline) return;
             LoginArgs login = new LoginArgs() { email = email, password = password };
-            POST("https://discordapp.com/api/auth/login", JsonUtility.ToJson(login), OnStart);
+            Call(HttpMethod.Post, "https://discordapp.com/api/auth/login", OnStart, JsonUtility.ToJson(login));
         }
 
         public void StartBot(string botToken)
@@ -453,7 +456,7 @@ namespace DiscordUnity
             }
 
             audioClients.Clear();
-            POST("https://discordapp.com/api/auth/logout", JsonUtility.ToJson(new DiscordTokenJSON() { token = token }), null);
+            Call(HttpMethod.Post, "https://discordapp.com/api/auth/logout", null, JsonUtility.ToJson(new DiscordTokenJSON() { token = token }));
             socket.CloseAsync();
         }
 
@@ -642,7 +645,7 @@ namespace DiscordUnity
                 return;
             }
 
-            GET("https://discordapp.com/api/gateway", OnGetGatewayUrl);
+            Call(HttpMethod.Get, "https://discordapp.com/api/gateway", OnGetGatewayUrl);
         }
 
         internal void GetOfflineServerMembers(string serverID, string filter, int limit)
@@ -699,17 +702,6 @@ namespace DiscordUnity
 
             socket.OnError += (sender, e) =>
             {
-                if (e.Message.Contains("502"))
-                {
-                    Thread.Sleep(2000);
-                    StartEventListener();
-                }
-
-                if (e.Message.Contains("429"))
-                {
-
-                }
-
                 Debug.LogError("Socket error: " + e.Message);
             };
 
@@ -818,8 +810,18 @@ namespace DiscordUnity
         #region Http
         internal delegate void CallResult(string result);
 
+        internal enum HttpMethod
+        {
+            Post,
+            Get,
+            Patch,
+            Put,
+            Delete
+        }
+
         internal class RequestState
         {
+            public HttpMethod method;
             public CallResult result;
             public HttpWebRequest request;
         }
@@ -831,116 +833,138 @@ namespace DiscordUnity
 
         internal string APIurl = "https://discordapp.com/api/";
 
-        internal void POST(string url, string content, CallResult result)
+        internal void Call(HttpMethod method, string url, CallResult result = null, string content = null)
         {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "POST";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { content = content, result = result, request = httpRequest });
-        }
+            if (blockSend)
+            {
+                Debug.LogWarning("Rest is on hold because of sendrate is exceeded.");
+                return;
+            }
 
-        internal void POST(string url, CallResult result)
-        {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "POST";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
-        }
+            try
+            {
+                HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
+                if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
+                httpRequest.ContentType = "application/json";
+                httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
 
-        internal void GET(string url, CallResult result)
-        {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "GET";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
-        }
+                switch (method)
+                {
+                    case HttpMethod.Post:
+                        httpRequest.Method = "POST";
+                        if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
+                        break;
 
-        internal void PATCH(string url, string content, CallResult result)
-        {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "PATCH";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { content = content, result = result, request = httpRequest });
-        }
+                    case HttpMethod.Get:
+                        httpRequest.Method = "GET";
+                        httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        break;
 
-        internal void PUT(string url, string content, CallResult result)
-        {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "PUT";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { content = content, result = result, request = httpRequest });
-        }
+                    case HttpMethod.Patch:
+                        httpRequest.Method = "PATCH";
+                        httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
+                        break;
 
-        internal void PUT(string url, CallResult result)
-        {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "PUT";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
-        }
+                    case HttpMethod.Put:
+                        httpRequest.Method = "PUT";
+                        if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
+                        break;
 
-        internal void DELETE(string url, CallResult result)
-        {
-            HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
-            if (hasToken) httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
-            httpRequest.ContentType = "application/json";
-            httpRequest.Method = "DELETE";
-            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
-            httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { result = result, request = httpRequest });
+                    case HttpMethod.Delete:
+                        httpRequest.Method = "DELETE";
+                        httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        break;
+                }
+            }
+
+            catch (Exception e)
+            {
+                Debug.LogError("#Main Call");
+                Debug.LogError(e.Message);
+            }
         }
 
         private void OnRequestStream(IAsyncResult result)
         {
-            RequestStateJSON state = (RequestStateJSON)result.AsyncState;
-
-            using (StreamWriter writer = new StreamWriter(state.request.EndGetRequestStream(result)))
+            try
             {
-                Debugger.WriteLine("Send: " + state.content);
-                writer.Write(state.content);
-                writer.Flush();
-                writer.Close();
+                RequestStateJSON state = (RequestStateJSON)result.AsyncState;
+
+                using (StreamWriter writer = new StreamWriter(state.request.EndGetRequestStream(result)))
+                {
+                    //Debugger.WriteLine("Send: " + state.content);
+                    writer.Write(state.content);
+                    writer.Flush();
+                    writer.Close();
+                }
+
+                state.request.BeginGetResponse(new AsyncCallback(OnGetResponse), state);
             }
 
-            state.request.BeginGetResponse(new AsyncCallback(OnGetResponse), state);
+            catch (Exception e)
+            {
+                Debug.LogError("#Request Call");
+                Debug.LogError(e.Message);
+            }
         }
 
         private void OnGetResponse(IAsyncResult result)
         {
             RequestState state = (RequestState)result.AsyncState;
 
+            if (blockSend)
+            {
+                return;
+            }
+
             try
             {
                 HttpWebResponse httpResponse = (HttpWebResponse)state.request.EndGetResponse(result);
-
-                if (httpResponse.StatusCode == HttpStatusCode.Unauthorized)
-                {
-                    Debug.LogError("Unauthorized  request!");
-                }
-
+                
                 using (StreamReader reader = new StreamReader(httpResponse.GetResponseStream()))
                 {
                     string response = reader.ReadToEnd();
-                    Debugger.WriteLine("Received: " + response);
-                    state.result.Invoke(response);
+                    //Debugger.WriteLine("Received: " + response);
+                    state.result(response);
                 }
             }
 
             catch (WebException e)
             {
-                Debug.LogError(e.Message);
+                if (e.Message.Contains("(429)") && !blockSend) // Rate limit
+                {
+                    int duration = 0;
+
+                    using (StreamReader s = new StreamReader(e.Response.GetResponseStream()))
+                    {
+                        string response = s.ReadToEnd();
+                        RateLimitJSON limit = JsonUtility.FromJson<RateLimitJSON>(response);
+                        duration = limit.retry_after;
+                    }
+
+                    Debug.LogWarning("SendRateExceeded, you're blocked for " + duration + "ms.");
+                    unityInvoker.Enqueue(() => OnSendBlocked(this, new DiscordSendRateArgs() { client = this, duration = duration }));
+                    blockThread = new Thread(DoBlock);
+                    blockThread.Start(duration);
+                }
+
+                if (e.Message.Contains("(502)")) // Bad request
+                {
+                    Thread.Sleep(2000);
+                    Call(state.method, state.request.RequestUri.AbsolutePath, state.result, (state.GetType() == typeof(RequestStateJSON)) ? ((RequestStateJSON)state).content : null);
+                }
             }
+        }
+
+        private void DoBlock(object duration)
+        {
+            blockSend = true;
+            Thread.Sleep((int)duration);
+            blockSend = false;
+            Debug.LogWarning("SendRateExceeded, you're unblocked.");
+            unityInvoker.Enqueue(() => OnSendUnblocked(this, new DiscordSendRateArgs() { client = this, duration = 0 }));
         }
 
         public void UploadFile(string url, string file)
@@ -993,29 +1017,29 @@ namespace DiscordUnity
 
         internal void GetChannel(string channelID)
         {
-            GET(channelurl + channelID, null);
+            Call(HttpMethod.Get, channelurl + channelID, null);
         }
 
         internal void CreateChannel(string serverID, string channelname, string channeltype = "text")
         {
             CreateChannelArgs args = new CreateChannelArgs() { name = channelname, type = channeltype };
-            POST(APIurl + "guilds/" + serverID + "/channels", JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Post, APIurl + "guilds/" + serverID + "/channels", null, JsonUtility.ToJson(args));
         }
 
         internal void EditChannel(string channelID, string channelname, string topic, int position = 0)
         {
             EditChannelArgs args = new EditChannelArgs() { name = channelname, position = position, topic = topic };
-            PATCH(channelurl + channelID, JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Patch, channelurl + channelID, null, JsonUtility.ToJson(args));
         }
 
         internal void DeleteChannel(string channelID)
         {
-            DELETE(channelurl + channelID, null);
+            Call(HttpMethod.Delete, channelurl + channelID, null);
         }
 
         internal void BroadcastTyping(string channelID)
         {
-            POST(channelurl + channelID + "/typing", null);
+            Call(HttpMethod.Post, channelurl + channelID + "/typing", null);
         }
 
         //
@@ -1028,7 +1052,7 @@ namespace DiscordUnity
             if (before) url += "&before=" + messageID;
             else url += "&after=" + messageID;
 
-            GET(url, (result) =>
+            Call(HttpMethod.Get, url, (result) =>
             {
                 string substring = "{\"messages\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
@@ -1045,7 +1069,7 @@ namespace DiscordUnity
         {
             string url = channelurl + channelID + "/messages?&limit=" + limit;
 
-            GET(url, (result) =>
+            Call(HttpMethod.Get, url, (result) =>
             {
                 string substring = "{\"messages\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
@@ -1066,23 +1090,23 @@ namespace DiscordUnity
         internal void SendMessage(string channelID, string content, int nonce, bool textToSpeech)
         {
             SendMessageArgs args = new SendMessageArgs() { content = content, nonce = nonce, tts = textToSpeech };
-            POST(channelurl + channelID + "/messages", JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Post, channelurl + channelID + "/messages", null, JsonUtility.ToJson(args));
         }
 
         internal void EditMessage(string channelID, string messageID, string content)
         {
             EditMessageArgs args = new EditMessageArgs() { content = content };
-            PATCH(channelurl + channelID + "/messages/" + messageID, JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Patch, channelurl + channelID + "/messages/" + messageID, null, JsonUtility.ToJson(args));
         }
 
         internal void DeleteMessage(string channelID, string messageID)
         {
-            DELETE(channelurl + channelID + "/messages/" + messageID, null);
+            Call(HttpMethod.Delete, channelurl + channelID + "/messages/" + messageID, null);
         }
 
         internal void AcknowledgeMessage(string channelID, string messageID)
         {
-            POST(channelurl + channelID + "/messages/" + messageID + "/ack", null);
+            Call(HttpMethod.Post, channelurl + channelID + "/messages/" + messageID + "/ack", null);
         }
 
         //
@@ -1092,15 +1116,15 @@ namespace DiscordUnity
         internal void CreateOrEditPermission(string channelID, string targetID, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
         {
             CreateOrEditPermissionArgs args = new CreateOrEditPermissionArgs() { allow = Utils.GetPermissions(allowed), deny = Utils.GetPermissions(denied), id = targetID, type = type == TargetType.Member ? "member" : "role" };
-            PUT(channelurl + channelID + "/permissions/" + targetID, JsonUtility.ToJson(args), (result) =>
+            Call(HttpMethod.Put, channelurl + channelID + "/permissions/" + targetID, (result) =>
             {
                 Debug.Log("Permissions Event: " + result);
-            });
+            }, JsonUtility.ToJson(args));
         }
 
         internal void DeletePermission(string channelID, string targetID)
         {
-            DELETE(channelurl + channelID + "/permissions/" + targetID, (result) =>
+            Call(HttpMethod.Delete, channelurl + channelID + "/permissions/" + targetID, (result) =>
             {
                 Debug.Log("Permissions Event: " + result);
             });
@@ -1122,7 +1146,7 @@ namespace DiscordUnity
             }
 
             CreateServerArgs args = new CreateServerArgs() { name = servername, region = region, icon = iconData };
-            POST(serverurl.TrimEnd('/'), JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Post, serverurl.TrimEnd('/'), null, JsonUtility.ToJson(args));
         }
 
         internal void EditServer(string serverID, string servername, string ownerID, string region, int? verificationLevel, string afkchannelID, int? timeout, Texture2D icon, Texture2D splash)
@@ -1140,27 +1164,27 @@ namespace DiscordUnity
             specialJson += splash == null ? "" : string.Format("\"splash\":\"{0}\",", splashData);
             specialJson = specialJson.TrimEnd(',');
             specialJson += "}";
-            PATCH(serverurl + serverID, specialJson, null);
+            Call(HttpMethod.Patch, serverurl + serverID, null, specialJson);
         }
 
         internal void LeaveServer(string serverID)
         {
-            DELETE(APIurl + "users/@me/guilds/" + serverID, null);
+            Call(HttpMethod.Delete, APIurl + "users/@me/guilds/" + serverID, null);
         }
 
         internal void DeleteServer(string serverID)
         {
-            DELETE(serverurl + serverID, null);
+            Call(HttpMethod.Delete, serverurl + serverID, null);
         }
 
         internal void GetServers()
         {
-            GET(APIurl + "users/@me/guilds", null);
+            Call(HttpMethod.Get, APIurl + "users/@me/guilds", null);
         }
 
         internal void GetServerChannels(string serverID)
         {
-            GET(serverurl + serverID + "/channels", (result) =>
+            Call(HttpMethod.Get, serverurl + serverID + "/channels", (result) =>
             {
                 string substring = "{\"channels\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
@@ -1179,12 +1203,12 @@ namespace DiscordUnity
 
         internal void EditMember(string serverID, string userID, EditMemberArgs args)
         {
-            PATCH(serverurl + serverID + "/members/" + userID, JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Patch, serverurl + serverID + "/members/" + userID, null, JsonUtility.ToJson(args));
         }
 
         internal void KickMember(string serverID, string userID)
         {
-            DELETE(serverurl + serverID + "/members/" + userID, null);
+            Call(HttpMethod.Delete, serverurl + serverID + "/members/" + userID, null);
         }
 
         //
@@ -1193,17 +1217,17 @@ namespace DiscordUnity
 
         internal void GetBans(string serverID)
         {
-            GET(serverurl + serverID + "/bans", null);
+            Call(HttpMethod.Get, serverurl + serverID + "/bans", null);
         }
 
         internal void AddBan(string serverID, string userID, int clearPreviousDays)
         {
-            PUT(serverurl + serverID + "/bans/" + userID + "?delete-message-days=" + clearPreviousDays, null);
+            Call(HttpMethod.Put, serverurl + serverID + "/bans/" + userID + "?delete-message-days=" + clearPreviousDays, null);
         }
 
         internal void RemoveBan(string serverID, string userID)
         {
-            DELETE(serverurl + serverID + "/bans/" + userID, null);
+            Call(HttpMethod.Delete, serverurl + serverID + "/bans/" + userID, null);
         }
 
         //
@@ -1212,23 +1236,23 @@ namespace DiscordUnity
 
         internal void CreateRole(string serverID)
         {
-            POST(serverurl + serverID + "/roles", null);
+            Call(HttpMethod.Post, serverurl + serverID + "/roles", null);
         }
 
         internal void EditRole(string serverID, string roleID, uint color, bool hoist, string name, DiscordPermission[] permissions)
         {
             EditRoleArgs args = new EditRoleArgs() { color = color, hoist = hoist, name = name, permissions = Utils.GetPermissions(permissions) };
-            PATCH(serverurl + serverID + "/roles/" + roleID, JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Patch, serverurl + serverID + "/roles/" + roleID, null, JsonUtility.ToJson(args));
         }
 
         internal void ReorderRoles(string serverID, DiscordRole[] roles)
         {
-            PATCH(serverurl + serverID + "/roles", JsonUtility.ToJson(GetRolesOrdered(roles)), null);
+            Call(HttpMethod.Patch, serverurl + serverID + "/roles", null, JsonUtility.ToJson(GetRolesOrdered(roles)));
         }
 
         internal void DeleteRole(string serverID, string roleID)
         {
-            DELETE(serverurl + serverID + "/roles/" + roleID, null);
+            Call(HttpMethod.Delete, serverurl + serverID + "/roles/" + roleID, null);
         }
 
         private static DiscordRoleJSON[] GetRolesOrdered(DiscordRole[] roles)
@@ -1262,7 +1286,7 @@ namespace DiscordUnity
 
         internal void Getinvite(string inviteID)
         {
-            GET(inviteurl + inviteID, (result) =>
+            Call(HttpMethod.Get, inviteurl + inviteID, (result) =>
             {
                 DiscordBasicInviteJSON invite = JsonUtility.FromJson<DiscordBasicInviteJSON>(result);
                 unityInvoker.Enqueue(() => OnInviteUpdated(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
@@ -1271,7 +1295,7 @@ namespace DiscordUnity
 
         internal void Acceptinvite(string inviteID)
         {
-            POST(inviteurl + inviteID, (result) =>
+            Call(HttpMethod.Post, inviteurl + inviteID, (result) =>
             {
                 DiscordBasicInviteJSON invite = JsonUtility.FromJson<DiscordBasicInviteJSON>(result);
                 unityInvoker.Enqueue(() => OnInviteAccepted(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
@@ -1282,16 +1306,16 @@ namespace DiscordUnity
         {
             DiscordInviteJSON args = new DiscordInviteJSON() { max_age = maxAge, max_uses = maxUses, temporary = temporary, xkcdpass = xkcdpass };
 
-            POST(APIurl + "channels/" + channelID + "/invites", JsonUtility.ToJson(args), (result) =>
+            Call(HttpMethod.Post, APIurl + "channels/" + channelID + "/invites", (result) =>
             {
                 DiscordRichInviteJSON invite = JsonUtility.FromJson<DiscordRichInviteJSON>(result);
                 unityInvoker.Enqueue(() => OnInviteCreated(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-            });
+            }, JsonUtility.ToJson(args));
         }
 
         internal void Deleteinvite(string inviteID)
         {
-            DELETE(inviteurl + inviteID, (result) =>
+            Call(HttpMethod.Delete, inviteurl + inviteID, (result) =>
             {
                 DiscordBasicInviteJSON invite = JsonUtility.FromJson<DiscordBasicInviteJSON>(result);
                 unityInvoker.Enqueue(() => OnInviteDeleted(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
@@ -1300,7 +1324,7 @@ namespace DiscordUnity
 
         internal void GetServerInvites(string serverID)
         {
-            GET(APIurl + "guilds/" + serverID + "/invites", (result) =>
+            Call(HttpMethod.Get, APIurl + "guilds/" + serverID + "/invites", (result) =>
             {
                 string substring = "{\"invites\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
@@ -1315,7 +1339,7 @@ namespace DiscordUnity
 
         internal void GetChannelInvites(string channelID)
         {
-            GET(APIurl + "channels/" + channelID + "/invites", (result) =>
+            Call(HttpMethod.Get, APIurl + "channels/" + channelID + "/invites", (result) =>
             {
                 string substring = "{\"invites\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
@@ -1342,12 +1366,12 @@ namespace DiscordUnity
 
         internal void GetactiveMaintenances()
         {
-            GET(statusurl + "active.json", OnStatusPacket);
+            Call(HttpMethod.Get, statusurl + "active.json", OnStatusPacket);
         }
 
         internal void GetupcomingMaintenances()
         {
-            GET(statusurl + "upcoming.json", OnStatusPacket);
+            Call(HttpMethod.Get, statusurl + "upcoming.json", OnStatusPacket);
         }
 
         //
@@ -1359,7 +1383,7 @@ namespace DiscordUnity
         internal void CreatePrivateChannel(string userID, string recipientID)
         {
             CreatePrivateChannelArgs args = new CreatePrivateChannelArgs() { recipient_id = recipientID };
-            POST(userurl + userID + "/channels", JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Post, userurl + userID + "/channels", null, JsonUtility.ToJson(args));
         }
 
         //
@@ -1370,11 +1394,11 @@ namespace DiscordUnity
         {
             string avatarData = "data:image/jpeg;base64," + Convert.ToBase64String(avatar.EncodeToJPG());
             EditProfileArgs args = new EditProfileArgs() { avatar = avatarData, email = email, new_password = new_password, password = password, username = username };
-            PATCH(userurl + "@me", JsonUtility.ToJson(args), (result) =>
+            Call(HttpMethod.Patch, userurl + "@me", (result) =>
             {
                 DiscordProfileJSON profile = JsonUtility.FromJson<DiscordProfileJSON>(result);
                 unityInvoker.Enqueue(() => OnProfileUpdated(this, new DiscordUserArgs() { user = new DiscordUser(this, profile), client = this }));
-            });
+            }, JsonUtility.ToJson(args));
         }
 
         //
@@ -1385,7 +1409,7 @@ namespace DiscordUnity
 
         internal void GetServerRegions()
         {
-            GET(voiceurl + "regions", (result) =>
+            Call(HttpMethod.Get, voiceurl + "regions", (result) =>
             {
                 string substring = "{\"regions\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
@@ -1404,7 +1428,7 @@ namespace DiscordUnity
         internal void MoveMember(string serverID, string memberID, string channelID)
         {
             MoveMemberArgs args = new MoveMemberArgs() { channel_id = channelID };
-            PATCH(APIurl + "guilds/" + serverID + "/members/" + memberID, JsonUtility.ToJson(args), null);
+            Call(HttpMethod.Patch, APIurl + "guilds/" + serverID + "/members/" + memberID, null, JsonUtility.ToJson(args));
         }
         #endregion
     }

@@ -580,4 +580,11 @@ namespace DiscordUnity
         public bool self_mute;
         public bool self_deaf;
     }
+
+    [Serializable]
+    internal struct RateLimitJSON
+    {
+        public string message;
+        public int retry_after;
+    }
 }

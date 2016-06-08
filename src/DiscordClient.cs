@@ -71,7 +71,6 @@ namespace DiscordUnity
                             heartbeatThread = new Thread(KeepAlive);
                             heartbeatThread.Start();
                             SetupClient(e);
-                            Debug.Log("DiscordApi Started!");
                             isOnline = true;
                             unityInvoker.Enqueue(() => OnClientOpened(this, new DiscordEventArgs() { client = this }));
                         }
@@ -433,9 +432,7 @@ namespace DiscordUnity
             {
                 try
                 {
-                    Action action = unityInvoker.Dequeue();
-                    Debug.Log(action.Method.GetType().Name + ": " + (action != null));
-                    action();
+                    unityInvoker.Dequeue()();
                 }
 
                 catch (Exception e)
@@ -475,7 +472,6 @@ namespace DiscordUnity
                 unityInvoker.Clear();
                 unityInvoker = null;
                 isBot = false;
-                Debug.Log("DiscordApi Stopped!");
                 OnClientClosed(this, new DiscordEventArgs() { client = this });
             }
 
@@ -692,11 +688,10 @@ namespace DiscordUnity
             {
                 if (!e.WasClean)
                 {
-                    Debug.LogError("Socket closed2: " + e.Code);
+                    Debug.LogError("Socket closed: " + e.Code);
+                    Debug.LogError("Socket closed: " + e.Reason);
                 }
-
-                Debug.LogWarning("Socket closed: " + e.Reason);
-
+                
                 StopEventListener();
             };
 
@@ -969,7 +964,6 @@ namespace DiscordUnity
 
         public void UploadFile(string url, string file)
         {
-            Debug.Log("Setting up File ...");
             string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
             HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
             httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
@@ -986,8 +980,7 @@ namespace DiscordUnity
             RequestStateJSON state = (RequestStateJSON)result.AsyncState;
             string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
             byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
-
-            Debug.Log("Sending File ...");
+            
             using (Stream stream = state.request.EndGetRequestStream(result))
             {
                 stream.Write(boundarybytes, 0, boundarybytes.Length);
@@ -1002,8 +995,7 @@ namespace DiscordUnity
                 stream.Write(trailer, 0, trailer.Length);
                 stream.Close();
             }
-
-            Debug.Log("File send.");
+            
             state.request.BeginGetResponse(new AsyncCallback(OnGetResponse), state);
         }
         #endregion
@@ -1116,18 +1108,12 @@ namespace DiscordUnity
         internal void CreateOrEditPermission(string channelID, string targetID, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
         {
             CreateOrEditPermissionArgs args = new CreateOrEditPermissionArgs() { allow = Utils.GetPermissions(allowed), deny = Utils.GetPermissions(denied), id = targetID, type = type == TargetType.Member ? "member" : "role" };
-            Call(HttpMethod.Put, channelurl + channelID + "/permissions/" + targetID, (result) =>
-            {
-                Debug.Log("Permissions Event: " + result);
-            }, JsonUtility.ToJson(args));
+            Call(HttpMethod.Put, channelurl + channelID + "/permissions/" + targetID, null, JsonUtility.ToJson(args));
         }
 
         internal void DeletePermission(string channelID, string targetID)
         {
-            Call(HttpMethod.Delete, channelurl + channelID + "/permissions/" + targetID, (result) =>
-            {
-                Debug.Log("Permissions Event: " + result);
-            });
+            Call(HttpMethod.Delete, channelurl + channelID + "/permissions/" + targetID);
         }
 
         //

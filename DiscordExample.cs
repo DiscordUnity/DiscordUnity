@@ -10,7 +10,7 @@ public class DiscordExample : MonoBehaviour
     private string token;
     private string serverName;
     private string channelName;
-    private string content;
+    private string filepath;
 
     private DiscordClient client;
     private DiscordChannel randomChannel;
@@ -24,7 +24,7 @@ public class DiscordExample : MonoBehaviour
         token = "token";
         serverName = "server name";
         channelName = "channel name";
-        content = "Hello World!";
+        filepath = "D://Documents//Pictures//MountainBackground.jpg";
 
         client = new DiscordClient();
         timer = new System.Diagnostics.Stopwatch();
@@ -90,13 +90,13 @@ public class DiscordExample : MonoBehaviour
         {
             serverName = GUILayout.TextField(serverName);
             channelName = GUILayout.TextField(channelName);
-            content = GUILayout.TextField(content);
+            filepath = GUILayout.TextField(filepath);
 
             if (GUILayout.Button("Send Message"))
             {
                 DiscordServer server = client.servers.Where(x => x.name == serverName).FirstOrDefault();
                 randomChannel = server.channels.Where(x => x.name == channelName).FirstOrDefault();
-                randomChannel.SendMessage(content, false);
+                randomChannel.SendFile(filepath);
             }
 
             if (GUILayout.Button("Stop"))

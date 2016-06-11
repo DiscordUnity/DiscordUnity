@@ -928,7 +928,6 @@ namespace DiscordUnity
             client.SendMessage(ID, content, 0, textToSpeech);
         }
         
-        [Obsolete("SendFile is work in progress.", true)]
         public void SendFile(string filePath)
         {
             client.SendFile(ID, filePath);

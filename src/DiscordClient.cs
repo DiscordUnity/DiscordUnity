@@ -694,11 +694,10 @@ namespace DiscordUnity
 
             socket.OnClose += (sender, e) =>
             {
-                Debug.LogError("Socket closed: " + e.Reason);
-
                 if (!e.WasClean)
                 {
                     Debug.LogError("Socket closed: " + e.Code);
+                    Debug.LogError("Socket closed: " + e.Reason);
                 }
                 
                 StopEventListener();
@@ -1001,31 +1000,36 @@ namespace DiscordUnity
             httpRequest.Headers["authorization"] = isBot ? "Bot " + token : token;
             httpRequest.ContentType = "multipart/form-data; boundary=" + boundary;
             httpRequest.Method = "POST";
-            httpRequest.UserAgent = isBot ? "DiscordBot DiscordUnity" : "Custom Discord Client DiscordUnity";
+            httpRequest.UserAgent = "DiscordBot (https://github.com/robinhood128/DiscordUnity, 0.0.0)";
             httpRequest.KeepAlive = true;
+            httpRequest.Credentials = CredentialCache.DefaultCredentials;
 
-            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestFileStream), new RequestStateJSON() { content = file, request = httpRequest });
+            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestFileStream), new RequestStateJSON() { content = file + boundary, request = httpRequest });
         }
 
         private void OnRequestFileStream(IAsyncResult result)
         {
             RequestStateJSON state = (RequestStateJSON)result.AsyncState;
-            string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
+            string file = state.content.Split(new string[1] { "---------------------------" }, StringSplitOptions.None)[0];
+            string boundary = "---------------------------" + state.content.Split(new string[1] { "---------------------------" }, StringSplitOptions.None)[1];
             byte[] boundarybytes = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "\r\n");
             
             using (Stream stream = state.request.EndGetRequestStream(result))
             {
                 stream.Write(boundarybytes, 0, boundarybytes.Length);
-                string header = "Content-Disposition: form-data; name=\"file\"; filename=\"" + state.content + "\"\r\nContent-Type: image/jpeg\r\n\r\n";
+                string header = "Content-Disposition: form-data; name=\"file\"; filename=\"" + file + "\"\r\nContent-Type: image/jpeg\r\n\r\n";
                 byte[] headerbytes = System.Text.Encoding.UTF8.GetBytes(header);
                 stream.Write(headerbytes, 0, headerbytes.Length);
 
-                byte[] fileData = File.ReadAllBytes(state.content);
-                stream.Write(fileData, 0, fileData.Length);
-
+                using (Stream fs = File.Open(file, FileMode.Open))
+                {
+                    byte[] fileData = new byte[fs.Length - fs.Position];
+                    fs.Read(fileData, 0, fileData.Length);
+                    stream.Write(fileData, 0, fileData.Length);
+                }
+                
                 byte[] trailer = System.Text.Encoding.ASCII.GetBytes("\r\n--" + boundary + "--\r\n");
                 stream.Write(trailer, 0, trailer.Length);
-                stream.Close();
             }
             
             state.request.BeginGetResponse(new AsyncCallback(OnGetResponse), state);

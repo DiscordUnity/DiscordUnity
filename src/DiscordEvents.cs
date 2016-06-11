@@ -85,9 +85,9 @@ namespace DiscordUnity
         /// <summary> SenderObject is the client.</summary>
         public EventHandler<DiscordSendRateArgs> OnSendUnblocked = delegate { };
 
-        [Obsolete("AudioClient is work in progress.", false)]
-        public EventHandler<DiscordAudioClientArgs> OnAudioClientOpened = delegate { };
-        [Obsolete("AudioClient is work in progress.", false)]
-        public EventHandler<DiscordAudioClientArgs> OnAudioClientClosed = delegate { };
+        /// <summary> SenderObject is the client.</summary>
+        public EventHandler<DiscordVoiceClientArgs> OnVoiceClientOpened = delegate { };
+        /// <summary> SenderObject is the client.</summary>
+        public EventHandler<DiscordVoiceClientArgs> OnVoiceClientClosed = delegate { };
     }
 }

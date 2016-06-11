@@ -47,9 +47,9 @@ namespace DiscordUnity
         internal bool blockSend = false;
         internal bool hasToken { get { return !string.IsNullOrEmpty(token); } }
         internal Queue<Action> unityInvoker;
-        
-        private WebSocket socket;
-        private Dictionary<string, DiscordAudioClient> audioClients;
+        internal WebSocket socket;
+        internal Dictionary<string, DiscordVoiceClient> voiceClients;
+
         private int sequence = 0;
         private int heartbeat = 41250;
         private Thread heartbeatThread;
@@ -195,7 +195,7 @@ namespace DiscordUnity
                             DiscordPresenceJSON presence = JsonUtility.FromJson<DiscordPresenceJSON>(payload);
                             if (!_servers.ContainsKey(presence.guild_id)) break;
                             if (!_servers[presence.guild_id]._members.ContainsKey(presence.user.id)) break;
-                            DiscordMember member = _servers[presence.guild_id]._members[presence.user.id];
+                            DiscordUser member = _servers[presence.guild_id]._members[presence.user.id];
                             unityInvoker.Enqueue(() => OnPresenceUpdated(member, new DiscordPresenceArgs() { presence = new DiscordPresence(member, presence), client = this }));
                         }
                         break;
@@ -268,7 +268,7 @@ namespace DiscordUnity
                             DiscordMemberJSON member = JsonUtility.FromJson<DiscordMemberJSON>(payload);
                             if (_servers[member.guild_id]._members.ContainsKey(member.user.id))
                                 _servers[member.guild_id]._members.Remove(member.user.id);
-                            DiscordMember result = new DiscordMember(this, member);
+                            DiscordUser result = new DiscordUser(this, member);
                             _servers[member.guild_id]._members.Add(member.user.id, result);
                             unityInvoker.Enqueue(() => OnMemberJoined(_servers[member.guild_id], new DiscordMemberArgs() { member = result, client = this }));
                         }
@@ -279,7 +279,7 @@ namespace DiscordUnity
                             DiscordMemberJSON member = JsonUtility.FromJson<DiscordMemberJSON>(payload);
                             if (_servers[member.guild_id]._members.ContainsKey(member.user.id))
                                 _servers[member.guild_id]._members.Remove(member.user.id);
-                            DiscordMember result = new DiscordMember(this, member);
+                            DiscordUser result = new DiscordUser(this, member);
                             _servers[member.guild_id]._members.Add(member.user.id, result);
                             unityInvoker.Enqueue(() => OnMemberUpdated(_servers[member.guild_id], new DiscordMemberArgs() { member = result, client = this }));
                         }
@@ -290,7 +290,7 @@ namespace DiscordUnity
                             DiscordMemberJSON member = JsonUtility.FromJson<DiscordMemberJSON>(payload);
                             if (_servers[member.guild_id]._members.ContainsKey(member.user.id))
                                 _servers[member.guild_id]._members.Remove(member.user.id);
-                            DiscordMember result = new DiscordMember(this, member);
+                            DiscordUser result = new DiscordUser(this, member);
                             unityInvoker.Enqueue(() => OnMemberLeft(_servers[member.guild_id], new DiscordMemberArgs() { member = result, client = this }));
                         }
                         break;
@@ -303,7 +303,7 @@ namespace DiscordUnity
                             {
                                 if (_servers[member.guild_id]._members.ContainsKey(member.user.id))
                                     _servers[member.guild_id]._members.Remove(member.user.id);
-                                DiscordMember result = new DiscordMember(this, member);
+                                DiscordUser result = new DiscordUser(this, member);
                                 _servers[member.guild_id]._members.Add(member.user.id, result);
                                 unityInvoker.Enqueue(() => OnMemberUpdated(_servers[member.guild_id], new DiscordMemberArgs() { member = result, client = this }));
                             }
@@ -379,23 +379,15 @@ namespace DiscordUnity
 
                     case "VOICE_STATE_UPDATE":
                         {
-                            try
-                            {
-                                DiscordVoiceStateJSON voiceState = JsonUtility.FromJson<DiscordVoiceStateJSON>(payload);
-                                VoiceStateUpdateEvents(voiceState);
-                            }
-
-                            catch (Exception e)
-                            {
-                                Debug.LogError("Problem was here all along: " + e.Message);
-                            }
+                            DiscordVoiceStateJSON voiceState = JsonUtility.FromJson<DiscordVoiceStateJSON>(payload);
+                            VoiceStateUpdateEvents(voiceState);
                         }
                         break;
 
                     case "VOICE_SERVER_UPDATE":
                         {
                             DiscordVoiceServerStateJSON voiceState = JsonUtility.FromJson<DiscordVoiceServerStateJSON>(payload);
-                            audioClients[voiceState.guild_id].Start(_servers[voiceState.guild_id], voiceState.endpoint, voiceState.token);
+                            voiceClients[voiceState.guild_id].Start(_servers[voiceState.guild_id], voiceState.endpoint, voiceState.token);
                         }
                         break;
                 }
@@ -428,7 +420,12 @@ namespace DiscordUnity
 
         public void Update()
         {
-            while (unityInvoker != null && unityInvoker.Count > 0)
+            if (unityInvoker == null)
+            {
+                return;
+            }
+
+            while (unityInvoker.Count > 0)
             {
                 try
                 {
@@ -444,24 +441,29 @@ namespace DiscordUnity
 
         public void Stop()
         {
-            foreach (DiscordAudioClient audioClient in audioClients.Values)
+            foreach (DiscordVoiceClient voiceClient in voiceClients.Values)
             {
-                if (audioClient != null)
+                if (voiceClient != null)
                 {
-                    audioClient.Dispose();
+                    voiceClient.Dispose();
                 }
             }
 
-            audioClients.Clear();
+            voiceClients.Clear();
             Call(HttpMethod.Post, "https://discordapp.com/api/auth/logout", null, JsonUtility.ToJson(new DiscordTokenJSON() { token = token }));
             socket.CloseAsync();
         }
 
         public void Dispose()
         {
+            if (isOnline)
+            {
+                socket.CloseAsync();
+                return;
+            }
+
             try
             {
-                isOnline = false;
                 sequence = 0;
                 heartbeat = 41250;
                 token = "";
@@ -472,6 +474,8 @@ namespace DiscordUnity
                 unityInvoker.Clear();
                 unityInvoker = null;
                 isBot = false;
+                heartbeatThread.Abort();
+                heartbeatThread = null;
                 OnClientClosed(this, new DiscordEventArgs() { client = this });
             }
 
@@ -589,15 +593,19 @@ namespace DiscordUnity
             if (!isOnline) return;
             GetServerRegions();
         }
-
-        [Obsolete("AudioClient is work in progress.", true)]
-        public void GetAudioClient(DiscordChannel channel, bool muted = false, bool deaf = false)
+        
+        public void GetVoiceClient(DiscordChannel channel, bool muted = false, bool deaf = false)
         {
-            string guildID = "";
             if (channel.type != DiscordChannelType.Voice) return;
-            if (audioClients.ContainsKey(guildID)) if (audioClients[guildID].isOnline) audioClients[guildID].Dispose();
-            DiscordAudioClient audioClient = new DiscordAudioClient(this, channel);
-            audioClients.Add(guildID, audioClient);
+
+            if (voiceClients.ContainsKey(channel.serverID))
+            {
+                unityInvoker.Enqueue(() => OnVoiceClientOpened(this, new DiscordVoiceClientArgs() { client = this, voiceClient = voiceClients[channel.serverID] }));
+                return;
+            }
+
+            DiscordVoiceClient voiceClient = new DiscordVoiceClient(this, channel);
+            voiceClients.Add(channel.serverID, voiceClient);
 
             PayloadArgs<JoinVoiceArgs> args = new PayloadArgs<JoinVoiceArgs>()
             {
@@ -629,7 +637,7 @@ namespace DiscordUnity
             isOnline = false;
             isBot = false;
             unityInvoker = new Queue<Action>();
-            audioClients = new Dictionary<string, DiscordAudioClient>();
+            voiceClients = new Dictionary<string, DiscordVoiceClient>();
             GetGatewayUrl();
         }
 
@@ -686,10 +694,11 @@ namespace DiscordUnity
 
             socket.OnClose += (sender, e) =>
             {
+                Debug.LogError("Socket closed: " + e.Reason);
+
                 if (!e.WasClean)
                 {
                     Debug.LogError("Socket closed: " + e.Code);
-                    Debug.LogError("Socket closed: " + e.Reason);
                 }
                 
                 StopEventListener();
@@ -705,13 +714,32 @@ namespace DiscordUnity
 
         private void SendIdentifyPacket()
         {
-            string specialJson = "{\"op\": 2,\"d\": { \"token\": \"" + token + "\", \"v\": 4, \"properties\": { \"$os\": \"" + Environment.OSVersion.ToString() + "\",\"$browser\": \"DiscordUnity\",\"$device\": \"DiscordUnity\",\"$referrer\": \"\",\"$referring_domain\":\"\"}}}";
-            socket.Send(specialJson);
-            Debugger.WriteLine("SocketSend: " + specialJson);
+            PayloadArgs<DiscordIdentityArgs> args = new PayloadArgs<DiscordIdentityArgs>()
+            {
+                op = 2,
+                d = new DiscordIdentityArgs()
+                {
+                    token = token,
+                    v = 4,
+                    properties = new DiscordPropertiesArgs()
+                    {
+                        os = Environment.OSVersion.ToString(),
+                        browser = "DiscordUnity",
+                        device = "DiscordUnity",
+                        referrer = "",
+                        referring_domain = ""
+
+                    }
+                }
+            };
+
+            socket.Send(JsonUtility.ToJson(args));
+            Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
         }
 
         private void StopEventListener()
         {
+            isOnline = false;
             unityInvoker.Enqueue(Dispose);
         }
 
@@ -768,33 +796,37 @@ namespace DiscordUnity
         {
             if (!_servers.ContainsKey(voiceState.guild_id)) return;
             if (!_servers[voiceState.guild_id]._members.ContainsKey(voiceState.user_id)) return;
-
-            DiscordMember member = _servers[voiceState.guild_id]._members[voiceState.user_id];
-
+            
+            DiscordUser member = _servers[voiceState.guild_id]._members[voiceState.user_id];
+            
             if (string.IsNullOrEmpty(voiceState.channel_id))
             {
-                unityInvoker.Enqueue(() => audioClients[voiceState.guild_id].OnVoiceUserLeft(this, new DiscordUserArgs() { client = this, user = member.user }));
+                unityInvoker.Enqueue(() => voiceClients[voiceState.guild_id].OnVoiceUserLeft(this, new DiscordUserArgs() { client = this, user = member }));
                 return;
             }
-
-            if (member.user != null)
+            
+            member.muted = voiceState.mute;
+            member.deaf = voiceState.suppress;
+            
+            if (voiceClients.ContainsKey(voiceState.guild_id))
             {
-                member.muted = voiceState.mute;
-                member.deaf = voiceState.suppress;
-
                 if (!string.IsNullOrEmpty(voiceState.session_id))
                 {
-                    if (member.user == user)
+                    if (member == user)
                     {
-                        _servers[voiceState.guild_id]._members[user.ID].muted = voiceState.self_mute;
-                        _servers[voiceState.guild_id]._members[user.ID].deaf = voiceState.self_deaf;
-                        if (audioClients[voiceState.guild_id] != null) audioClients[voiceState.guild_id].sessionID = voiceState.session_id;
+                        user.muted = voiceState.self_mute;
+                        user.deaf = voiceState.self_deaf;
+
+                        if (voiceClients[voiceState.guild_id] != null)
+                        {
+                            if (voiceClients[voiceState.guild_id] != null) voiceClients[voiceState.guild_id].sessionID = voiceState.session_id;
+                        }
                     }
                 }
-
-                if (audioClients[voiceState.guild_id] != null)
+                
+                if (voiceClients[voiceState.guild_id] != null)
                 {
-                    unityInvoker.Enqueue(() => audioClients[voiceState.guild_id].OnVoiceState(audioClients[voiceState.guild_id], new DiscordMemberArgs() { client = this, member = member }));
+                    unityInvoker.Enqueue(() => voiceClients[voiceState.guild_id].OnVoiceState(voiceClients[voiceState.guild_id], new DiscordMemberArgs() { client = this, member = member }));
                 }
 
                 _servers[voiceState.guild_id]._members[voiceState.user_id] = member;

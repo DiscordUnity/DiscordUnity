@@ -16,7 +16,7 @@ namespace DiscordUnity
                 throw new InvalidOperationException($"Error occured while creating decoder: {error}");
         }
 
-        /// <summary> Produces PCM samples from Opus-encoded audio. </summary>
+        /// <summary> Produces PCM samples from Opus-encoded voice. </summary>
         /// <param name="input">PCM samples to decode.</param>
         /// <param name="inputOffset">Offset of the frame in input.</param>
         /// <param name="output">Buffer to store the decoded frame.</param>
@@ -31,7 +31,7 @@ namespace DiscordUnity
             return result;
         }
 
-        /// <summary> Produces PCM samples from Opus-encoded audio. </summary>
+        /// <summary> Produces PCM samples from Opus-encoded voice. </summary>
         /// <param name="input">PCM samples to decode.</param>
         /// <param name="inputOffset">Offset of the frame in input.</param>
         /// <param name="output">Buffer to store the decoded frame.</param>

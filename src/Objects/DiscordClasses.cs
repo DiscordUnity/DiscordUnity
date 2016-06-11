@@ -289,19 +289,19 @@ namespace DiscordUnity
         internal string serverID;
         internal Dictionary<string, DiscordRole> _roles;
 
-        internal DiscordPresence(DiscordMember member, DiscordPresenceJSON e)
+        internal DiscordPresence(DiscordUser user, DiscordPresenceJSON e)
         {
             serverID = e.guild_id;
 
             if (!string.IsNullOrEmpty(e.status))
             {
                 status = e.status;
-                member.status = e.status == "online" ? MemberStatus.Online : e.status == "idle" ? MemberStatus.Idle : MemberStatus.Offline;
+                user.status = e.status == "online" ? MemberStatus.Online : e.status == "idle" ? MemberStatus.Idle : MemberStatus.Offline;
             }
             
             if (e.game != null)
             {
-                member.game = e.game.name;
+                user.game = e.game.name;
                 game = e.game.name;
             }
 
@@ -317,8 +317,8 @@ namespace DiscordUnity
     
     public class DiscordServer
     {
-        public DiscordMember[] members { get { return _members.Values.ToArray(); } }
-        public DiscordMember[] bannedMembers { get { return _members.Values.Where(x => x.isBanned).ToArray(); } }
+        public DiscordUser[] members { get { return _members.Values.ToArray(); } }
+        public DiscordUser[] bannedMembers { get { return _members.Values.Where(x => x.isBanned).ToArray(); } }
         public DiscordChannel[] channels { get { return _channels.Values.ToArray(); } }
         public DiscordEmoji[] emojis { get { return _emojis.Values.ToArray(); } }
         public DiscordRole[] roles { get { return _roles.Values.ToArray(); } }
@@ -339,7 +339,7 @@ namespace DiscordUnity
         internal string embedChannelID;
         internal bool isEmbed;
         internal int verificationLevel;
-        internal Dictionary<string, DiscordMember> _members;
+        internal Dictionary<string, DiscordUser> _members;
         internal Dictionary<string, DiscordChannel> _channels;
         internal Dictionary<string, DiscordEmoji> _emojis;
         internal Dictionary<string, DiscordRole> _roles;
@@ -382,7 +382,7 @@ namespace DiscordUnity
                 splashState = TextureState.NoTexture;
             }
 
-            _members = new Dictionary<string, DiscordMember>();
+            _members = new Dictionary<string, DiscordUser>();
             _channels = new Dictionary<string, DiscordChannel>();
             _emojis = new Dictionary<string, DiscordEmoji>();
             _roles = new Dictionary<string, DiscordRole>();
@@ -391,7 +391,7 @@ namespace DiscordUnity
             {
                 foreach (var member in e.members)
                 {
-                    _members.Add(member.user.id, new DiscordMember(client, member, ID));
+                    _members.Add(member.user.id, new DiscordUser(client, member, ID));
                 }
             }
 
@@ -425,9 +425,9 @@ namespace DiscordUnity
             client.CreateChannel(ID, channelname, type == DiscordChannelType.Text ? "text" : "voice");
         }
 
-        public void Edit(string servername, string region, int? verificationLevel, string afkchannelID, int? timeout, Texture2D icon, Texture2D splash)
+        public void Edit(string servername, string region, int? verificationLevel, DiscordChannel afkchannel, int? timeout, Texture2D icon, Texture2D splash)
         {
-            client.EditServer(ID, servername, null, region, verificationLevel, afkChannelID, timeout, icon, splash);
+            client.EditServer(ID, servername, null, region, verificationLevel, afkchannel == null ? null : afkchannel.ID, timeout, icon, splash);
         }
 
         public void ChangeOwner(DiscordUser newOwner)
@@ -636,91 +636,7 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
-    public class DiscordMember
-    {
-        public DiscordUser user { get; internal set; }
-        public bool muted { get; internal set; }
-        public bool deaf { get; internal set; }
-        public bool isTyping { get; internal set; }
-        public bool isBanned { get; internal set; }
-        public DateTime joinedAt { get; internal set; }
-        public string game { get; internal set; }
-        public MemberStatus status { get; internal set; }
 
-        internal string serverID;
-        internal DiscordClient client;
-
-        internal DiscordMember(DiscordClient parent, DiscordMemberJSON member)
-        {
-            isTyping = false;
-            isBanned = false;
-            client = parent;
-            serverID = member.guild_id;
-            try { muted = member.mute; } catch { }
-            try { deaf = member.deaf; } catch { }
-            status = MemberStatus.Offline;
-            game = "";
-            user = new DiscordUser(client, member.user);
-            if (!string.IsNullOrEmpty(member.joined_at)) joinedAt = DateTime.Parse(member.joined_at);
-        }
-
-        internal DiscordMember(DiscordClient parent, DiscordMemberJSON member, string guild_id)
-        {
-            isTyping = false;
-            isBanned = false;
-            client = parent;
-            serverID = guild_id;
-            try { muted = member.mute; } catch { }
-            try { deaf = member.deaf; } catch { }
-            user = new DiscordUser(client, member.user);
-            if(!string.IsNullOrEmpty(member.joined_at)) joinedAt = DateTime.Parse(member.joined_at);
-        }
-
-        public void Edit(string nick, DiscordRole[] roles, bool? mute, bool? deaf, string channelID)
-        {
-            EditMemberArgs args = new EditMemberArgs() { nick = nick, roles = Utils.GetRoleIDs(roles), channel_id = channelID };
-            if (mute != null) args.mute = mute.Value;
-            if (deaf != null) args.deaf = deaf.Value;
-            client.EditMember(serverID, user.ID, args);
-        }
-        
-        public void Kick()
-        {
-            client.KickMember(serverID, user.ID);
-        }
-
-        public void Ban(int clearPreviousDays)
-        {
-            client.AddBan(serverID, user.ID, clearPreviousDays);
-        }
-
-        public void UnBan()
-        {
-            client.RemoveBan(serverID, user.ID);
-        }
-
-        public override bool Equals(object o)
-        {
-            return base.Equals(o);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
-        public static bool operator ==(DiscordMember a, DiscordMember b)
-        {
-            return a.user == b.user;
-        }
-
-        public static bool operator !=(DiscordMember a, DiscordMember b)
-        {
-            return a.user != b.user;
-        }
-    }
-    
     public class DiscordUser
     {
         public string name { get; internal set; }
@@ -729,8 +645,17 @@ namespace DiscordUnity
         public Texture2D avatar { get; internal set; }
         public TextureState avatarState { get; internal set; }
 
+        public bool muted { get; internal set; }
+        public bool deaf { get; internal set; }
+        public bool isTyping { get; internal set; }
+        public bool isBanned { get; internal set; }
+        public DateTime joinedAt { get; internal set; }
+        public string game { get; internal set; }
+        public MemberStatus status { get; internal set; }
+
         internal string ID;
         internal string avatarID;
+        internal string serverID;
         internal DiscordClient client;
 
         internal DiscordUser(DiscordClient parent, DiscordUserJSON user)
@@ -778,6 +703,29 @@ namespace DiscordUnity
             }
         }
 
+        internal DiscordUser(DiscordClient parent, DiscordMemberJSON member) : this(parent, member.user)
+        {
+            isTyping = false;
+            isBanned = false;
+            serverID = member.guild_id;
+            try { muted = member.mute; } catch { }
+            try { deaf = member.deaf; } catch { }
+            try { deaf = member.deaf; } catch { }
+            status = MemberStatus.Offline;
+            game = "";
+            if (!string.IsNullOrEmpty(member.joined_at)) joinedAt = DateTime.Parse(member.joined_at);
+        }
+
+        internal DiscordUser(DiscordClient parent, DiscordMemberJSON member, string guild_id) : this(parent, member.user)
+        {
+            isTyping = false;
+            isBanned = false;
+            serverID = guild_id;
+            try { muted = member.mute; } catch { }
+            try { deaf = member.deaf; } catch { }
+            if (!string.IsNullOrEmpty(member.joined_at)) joinedAt = DateTime.Parse(member.joined_at);
+        }
+
         public IEnumerator GetAvatar()
         {
             if (avatarState == TextureState.Unloaded)
@@ -796,6 +744,29 @@ namespace DiscordUnity
                 avatar = www.texture;
                 avatarState = TextureState.Loaded;
             }
+        }
+
+        public void Edit(string nick, DiscordRole[] roles, bool? mute, bool? deaf, string channelID)
+        {
+            EditMemberArgs args = new EditMemberArgs() { nick = nick, roles = Utils.GetRoleIDs(roles), channel_id = channelID };
+            if (mute != null) args.mute = mute.Value;
+            if (deaf != null) args.deaf = deaf.Value;
+            client.EditMember(serverID, ID, args);
+        }
+
+        public void Kick()
+        {
+            client.KickMember(serverID, ID);
+        }
+
+        public void Ban(int clearPreviousDays)
+        {
+            client.AddBan(serverID, ID, clearPreviousDays);
+        }
+
+        public void UnBan()
+        {
+            client.RemoveBan(serverID, ID);
         }
 
         public override bool Equals(object o)
@@ -991,7 +962,7 @@ namespace DiscordUnity
 
         internal string serverID;
         internal string lastMessageID;
-        public int bitrate = -1;
+        internal int bitrate = -1;
 
         internal DiscordChannel(DiscordClient parent, DiscordChannelJSON e)
         {
@@ -1026,9 +997,9 @@ namespace DiscordUnity
             client.GetServerInvites(ID);
         }
 
-        public void CreatePermission(DiscordMember member, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        public void CreatePermission(DiscordUser user, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
         {
-            client.CreateOrEditPermission(ID, member.user.ID, allowed, denied, type);
+            client.CreateOrEditPermission(ID, user.ID, allowed, denied, type);
         }
 
         public void CreatePermission(DiscordRole role, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
@@ -1036,9 +1007,9 @@ namespace DiscordUnity
             client.CreateOrEditPermission(ID, role.ID, allowed, denied, type);
         }
 
-        public void EditPermission(DiscordMember member, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        public void EditPermission(DiscordUser user, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
         {
-            client.CreateOrEditPermission(ID, member.user.ID, allowed, denied, type);
+            client.CreateOrEditPermission(ID, user.ID, allowed, denied, type);
         }
 
         public void EditPermission(DiscordRole role, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
@@ -1046,9 +1017,9 @@ namespace DiscordUnity
             client.CreateOrEditPermission(ID, role.ID, allowed, denied, type);
         }
 
-        public void DeletePermission(DiscordMember member)
+        public void DeletePermission(DiscordUser user)
         {
-            client.DeletePermission(ID, member.user.ID);
+            client.DeletePermission(ID, user.ID);
         }
 
         public void DeletePermission(DiscordRole role)

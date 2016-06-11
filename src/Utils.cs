@@ -24,11 +24,9 @@ namespace DiscordUnity
             for (int x = 0; x < floats.Length; x++)
             {
                 short sample = (short)(floats[x] * 32768f);
-                bytes[x * 2] = (byte)(sample >> 8);
-                bytes[x * 2 + 1] = (byte)(sample >> 0);
-                //byte[] bits = BitConverter.GetBytes(sample);
-                //bytes[x * 2] = bits[0];
-                //bytes[x * 2 + 1] = bits[1];
+                byte[] bits = BitConverter.GetBytes(sample);
+                bytes[x * 2] = bits[0];
+                bytes[x * 2 + 1] = bits[1];
             }
 
             return bytes;

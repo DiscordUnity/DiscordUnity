@@ -34,7 +34,7 @@ namespace DiscordUnity
                 SetBitrate(bitrate.Value);
         }
 
-        /// <summary> Produces Opus encoded audio from PCM samples. </summary>
+        /// <summary> Produces Opus encoded voice from PCM samples. </summary>
         /// <param name="input">PCM samples to encode.</param>
         /// <param name="inputOffset">Offset of the frame in pcmSamples.</param>
         /// <param name="output">Buffer to store the encoded frame.</param>
@@ -50,7 +50,7 @@ namespace DiscordUnity
             return result;
         }
 
-        /// <summary> Produces Opus encoded audio from PCM samples. </summary>
+        /// <summary> Produces Opus encoded voice from PCM samples. </summary>
         /// <param name="input">PCM samples to encode.</param>
         /// <param name="inputOffset">Offset of the frame in pcmSamples.</param>
         /// <param name="output">Buffer to store the encoded frame.</param>

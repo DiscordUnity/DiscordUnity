@@ -62,14 +62,6 @@ public class DiscordExample : MonoBehaviour
         }
     }
 
-    void OnDestroy()
-    {
-        if (client.isOnline)
-        {
-            client.Stop();
-        }
-    }
-
     void OnGUI()
     {
         if (!client.isOnline)

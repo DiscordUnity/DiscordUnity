@@ -59,7 +59,7 @@
     <Compile Include="Objects\DiscordEventArgs.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="DiscordClient.cs" />
-    <Compile Include="Voice\DiscordAudioClient.cs" />
+    <Compile Include="Voice\DiscordVoiceClient.cs" />
     <Compile Include="Objects\DiscordClasses.cs" />
     <Compile Include="Objects\DiscordJson.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -39,7 +39,7 @@ namespace DiscordUnity
 
     public class DiscordMemberArgs : DiscordEventArgs
     {
-        public DiscordMember member;
+        public DiscordUser member;
     }
 
     public class DiscordServerArgs : DiscordEventArgs
@@ -82,8 +82,8 @@ namespace DiscordUnity
         public bool speaking;
     }
 
-    public class DiscordAudioClientArgs : DiscordEventArgs
+    public class DiscordVoiceClientArgs : DiscordEventArgs
     {
-        public DiscordAudioClient audioClient;
+        public DiscordVoiceClient voiceClient;
     }
 }

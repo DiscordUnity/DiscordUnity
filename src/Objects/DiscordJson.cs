@@ -522,6 +522,24 @@ namespace DiscordUnity
     }
 
     [Serializable]
+    internal struct DiscordIdentityArgs
+    {
+        public string token;
+        public int v;
+        public DiscordPropertiesArgs properties;
+    }
+    
+    [Serializable]
+    internal struct DiscordPropertiesArgs
+    {
+        public string os;
+        public string browser;
+        public string device;
+        public string referrer;
+        public string referring_domain;
+    }
+
+    [Serializable]
     internal struct VoiceSpeakingArgs
     {
         public bool speaking;

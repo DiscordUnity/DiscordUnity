@@ -1,0 +1,4 @@
+#Testing
+configuration: Debug
+build:
+  project: src/DiscordUnity.sln

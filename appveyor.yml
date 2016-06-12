@@ -1,4 +1,4 @@
-#Testing
+version: 1.0.{build}
 configuration: Debug
 build:
-  project: src/DiscordUnity.sln
+  verbosity: minimal

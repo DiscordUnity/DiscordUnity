@@ -1,4 +1,4 @@
-# DiscordUnity
+# DiscordUnity [![Build status](https://ci.appveyor.com/api/projects/status/b1lvl871p3m164um?svg=true)](https://ci.appveyor.com/project/robinhood128/discordunity)
 A DiscordAPI made for Unity and only usable for Unity. It contains special features to make it all work.
 
 ### INSTALLATION

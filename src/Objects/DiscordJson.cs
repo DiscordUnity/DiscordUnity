@@ -140,6 +140,12 @@ namespace DiscordUnity
     }
 
     [Serializable]
+    internal struct DiscordRoleJSONWrapper
+    {
+        public DiscordRoleJSON[] roles;
+    }
+
+    [Serializable]
     internal struct DiscordRoleJSON
     {
         public string id;
@@ -167,6 +173,12 @@ namespace DiscordUnity
         public bool verified;
         public bool bot = false;
         public string avatar;
+    }
+
+    [Serializable]
+    internal struct DiscordMemberJSONWrapper
+    {
+        public DiscordMemberJSON[] members;
     }
 
     [Serializable]
@@ -245,6 +257,12 @@ namespace DiscordUnity
     internal struct DiscordServerIntegrationJSON
     {
         public string guild_id;
+    }
+
+    [Serializable]
+    internal class DiscordServerJSONWrapper
+    {
+        public DiscordServerJSON[] servers;
     }
 
     [Serializable]
@@ -332,6 +350,7 @@ namespace DiscordUnity
         public DiscordAttachmentJSON[] attachments;
         public DiscordEmbed[] embeds;
         public int nonce;
+        public bool pinned;
     }
 
     [Serializable]
@@ -401,6 +420,15 @@ namespace DiscordUnity
         public string name;
         public int position;
         public string topic;
+    }
+
+    [Serializable]
+    internal struct EditVoiceChannelArgs
+    {
+        public string name;
+        public int position;
+        public int bitrate;
+        public int user_limit;
     }
 
     [Serializable]

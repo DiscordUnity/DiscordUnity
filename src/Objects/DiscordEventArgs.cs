@@ -7,9 +7,14 @@ namespace DiscordUnity
         public DiscordClient client;
     }
 
-    public class DiscordChannelArgs : DiscordEventArgs
+    public class DiscordTextChannelArgs : DiscordEventArgs
     {
-        public DiscordChannel channel;
+        public DiscordTextChannel channel;
+    }
+
+    public class DiscordVoiceChannelArgs : DiscordEventArgs
+    {
+        public DiscordVoiceChannel channel;
     }
 
     public class DiscordDMArgs : DiscordEventArgs
@@ -69,7 +74,7 @@ namespace DiscordUnity
 
     public class DiscordVoiceArgs : DiscordEventArgs
     {
-        public DiscordChannel channel;
+        public DiscordVoiceChannel channel;
         public DiscordUser sender;
         public byte[] packet;
         public float[] unitypacket;

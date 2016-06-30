@@ -12,24 +12,30 @@ namespace DiscordUnity
     public partial class DiscordClient : IDisposable
     {
         #region Fields
+        /// <summary> Is this client online? </summary>
         public bool isOnline { get; internal set; }
+        /// <summary> Is this client a bot? </summary>
         public bool isBot { get; internal set; }
+        /// <summary> Is this client blocked because of sendrate limit? </summary>
         public bool isSendRateExceeded => blockSend;
+        /// <summary> The user of this client. </summary>
         public DiscordUser user { get; internal set; }
 
+        /// <summary> The servers of this user. </summary>
         public DiscordServer[] servers { get { return !isOnline ? new DiscordServer[0] : _servers.Values.ToArray(); } }
         internal Dictionary<string, DiscordServer> _servers;
 
-        public DiscordChannel[] channels { get { return !isOnline ? new DiscordChannel[0] : _channels.Values.ToArray(); } }
-        internal Dictionary<string, DiscordChannel> _channels
+        /// <summary> The channels of this user. </summary>
+        public DiscordTextChannel[] channels { get { return !isOnline ? new DiscordTextChannel[0] : _channels.Values.ToArray(); } }
+        internal Dictionary<string, DiscordTextChannel> _channels
         {
             get
             {
-                Dictionary<string, DiscordChannel> channelList = new Dictionary<string, DiscordChannel>();
+                Dictionary<string, DiscordTextChannel> channelList = new Dictionary<string, DiscordTextChannel>();
 
                 foreach (DiscordServer server in servers)
                 {
-                    foreach (DiscordChannel channel in server.channels)
+                    foreach (DiscordTextChannel channel in server.channels)
                     {
                         channelList.Add(channel.ID, channel);
                     }
@@ -39,6 +45,27 @@ namespace DiscordUnity
             }
         }
 
+        /// <summary> The channels of this user. </summary>
+        public DiscordVoiceChannel[] voicechannels { get { return !isOnline ? new DiscordVoiceChannel[0] : _voicechannels.Values.ToArray(); } }
+        internal Dictionary<string, DiscordVoiceChannel> _voicechannels
+        {
+            get
+            {
+                Dictionary<string, DiscordVoiceChannel> channelList = new Dictionary<string, DiscordVoiceChannel>();
+
+                foreach (DiscordServer server in servers)
+                {
+                    foreach (DiscordVoiceChannel channel in server.voicechannels)
+                    {
+                        channelList.Add(channel.ID, channel);
+                    }
+                }
+
+                return channelList;
+            }
+        }
+
+        /// <summary> The private channels of this user. </summary>
         public DiscordPrivateChannel[] privateChannels { get { return !isOnline ? new DiscordPrivateChannel[0] : _privateChannels.Values.ToArray(); } }
         internal Dictionary<string, DiscordPrivateChannel> _privateChannels;
 
@@ -55,6 +82,7 @@ namespace DiscordUnity
         private Thread heartbeatThread;
         private Thread typingThread;
         private Thread blockThread;
+        private DiscordCallback logincallback;
         #endregion
 
         #region Events
@@ -91,9 +119,9 @@ namespace DiscordUnity
 
                             DiscordServer server = _servers[channel.guild_id];
                             if (server._channels.ContainsKey(channel.id)) server._channels.Remove(channel.id);
-                            DiscordChannel result = new DiscordChannel(this, channel);
-                            server._channels.Add(channel.id, new DiscordChannel(this, channel));
-                            unityInvoker.Enqueue(() => OnChannelCreated(server, new DiscordChannelArgs() { channel = result, client = this }));
+                            DiscordTextChannel result = new DiscordTextChannel(this, channel);
+                            server._channels.Add(channel.id, new DiscordTextChannel(this, channel));
+                            unityInvoker.Enqueue(() => OnChannelCreated(server, new DiscordTextChannelArgs() { channel = result, client = this }));
                         }
                         break;
 
@@ -102,9 +130,9 @@ namespace DiscordUnity
                             DiscordChannelJSON channel = JsonUtility.FromJson<DiscordChannelJSON>(payload);
                             DiscordServer server = _servers[channel.guild_id];
                             if (server._channels.ContainsKey(channel.id)) server._channels.Remove(channel.id);
-                            DiscordChannel result = new DiscordChannel(this, channel);
-                            server._channels.Add(channel.id, new DiscordChannel(this, channel));
-                            unityInvoker.Enqueue(() => OnChannelUpdated(server, new DiscordChannelArgs() { channel = result, client = this }));
+                            DiscordTextChannel result = new DiscordTextChannel(this, channel);
+                            server._channels.Add(channel.id, new DiscordTextChannel(this, channel));
+                            unityInvoker.Enqueue(() => OnChannelUpdated(server, new DiscordTextChannelArgs() { channel = result, client = this }));
                         }
                         break;
 
@@ -122,8 +150,8 @@ namespace DiscordUnity
 
                             DiscordServer server = _servers[channel.guild_id];
                             if (server._channels.ContainsKey(channel.id)) server._channels.Remove(channel.id);
-                            DiscordChannel result = new DiscordChannel(this, channel);
-                            unityInvoker.Enqueue(() => OnChannelDeleted(server, new DiscordChannelArgs() { channel = result, client = this }));
+                            DiscordTextChannel result = new DiscordTextChannel(this, channel);
+                            unityInvoker.Enqueue(() => OnChannelDeleted(server, new DiscordTextChannelArgs() { channel = result, client = this }));
                         }
                         break;
 
@@ -196,7 +224,7 @@ namespace DiscordUnity
                             if (!_servers.ContainsKey(presence.guild_id)) break;
                             if (!_servers[presence.guild_id]._members.ContainsKey(presence.user.id)) break;
                             DiscordUser member = _servers[presence.guild_id]._members[presence.user.id];
-                            unityInvoker.Enqueue(() => OnPresenceUpdated(member, new DiscordPresenceArgs() { presence = new DiscordPresence(member, presence), client = this }));
+                            unityInvoker.Enqueue(() => OnPresenceUpdated(member, new DiscordPresenceArgs() { presence = new DiscordPresence(this, member, presence), client = this }));
                         }
                         break;
 
@@ -330,7 +358,7 @@ namespace DiscordUnity
                             DiscordRoleEventJSON role = JsonUtility.FromJson<DiscordRoleEventJSON>(payload);
                             if (_servers[role.guild_id]._roles.ContainsKey(role.role.id))
                                 _servers[role.guild_id]._roles.Remove(role.role.id);
-                            DiscordRole result = new DiscordRole(role.role);
+                            DiscordRole result = new DiscordRole(this, role.role, role.guild_id);
                             _servers[role.guild_id]._roles.Add(role.role.id, result);
                             unityInvoker.Enqueue(() => OnRoleCreated(_servers[role.guild_id], new DiscordRoleArgs() { role = result, client = this }));
                         }
@@ -341,7 +369,7 @@ namespace DiscordUnity
                             DiscordRoleEventJSON role = JsonUtility.FromJson<DiscordRoleEventJSON>(payload);
                             if (_servers[role.guild_id]._roles.ContainsKey(role.role.id))
                                 _servers[role.guild_id]._roles.Remove(role.role.id);
-                            DiscordRole result = new DiscordRole(role.role);
+                            DiscordRole result = new DiscordRole(this, role.role, role.guild_id);
                             _servers[role.guild_id]._roles.Add(role.role.id, result);
                             unityInvoker.Enqueue(() => OnRoleUpdated(_servers[role.guild_id], new DiscordRoleArgs() { role = result, client = this }));
                         }
@@ -404,20 +432,28 @@ namespace DiscordUnity
         #endregion
 
         #region Methods
-        public void Start(string email, string password)
+        /// <summary> Starts this client with user credentials. </summary>
+        /// <param name="email">The email of the user.</param>
+        /// <param name="password">The password of the user.</param>
+        public void Start(string email, string password, DiscordCallback callback)
         {
             if (isOnline) return;
+            logincallback = callback;
             LoginArgs login = new LoginArgs() { email = email, password = password };
-            Call(HttpMethod.Post, "https://discordapp.com/api/auth/login", OnStart, JsonUtility.ToJson(login));
+            Call(HttpMethod.Post, "https://discordapp.com/api/auth/login", OnStart, (result) => { unityInvoker.Enqueue(() => logincallback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(login));
         }
 
-        public void StartBot(string botToken)
+        /// <summary> Starts this client as a bot. </summary>
+        /// <param name="botToken">A token received by creating a bot.</param>
+        public void StartBot(string botToken, DiscordCallback callback)
         {
             if (isOnline) return;
+            logincallback = callback;
             token = botToken;
             StartEventListener();
         }
 
+        /// <summary> Updates the events. </summary>
         public void Update()
         {
             if (unityInvoker == null)
@@ -439,7 +475,9 @@ namespace DiscordUnity
             }
         }
 
-        public void Stop()
+        /// <summary> Stops this client. </summary>
+        /// <param name="callback">The callback when client is closed, be aware this is the only callback that isn't on the main unity thread.</param>
+        public void Stop(DiscordCallback callback)
         {
             foreach (DiscordVoiceClient voiceClient in voiceClients.Values)
             {
@@ -450,10 +488,11 @@ namespace DiscordUnity
             }
 
             voiceClients.Clear();
-            Call(HttpMethod.Post, "https://discordapp.com/api/auth/logout", null, JsonUtility.ToJson(new DiscordTokenJSON() { token = token }));
+            Call(HttpMethod.Post, "https://discordapp.com/api/auth/logout", (result) => { callback(this, "Client logged out.", new DiscordError()); }, (result) => { callback(this, "Client logged out.", new DiscordError()); }, JsonUtility.ToJson(new DiscordTokenJSON() { token = token }));
             socket.CloseAsync();
         }
 
+        /// <summary> You should call Stop(); </summary>
         public void Dispose()
         {
             if (isOnline)
@@ -482,9 +521,11 @@ namespace DiscordUnity
             catch { }
         }
 
-        public void CreatePrivateChannel(DiscordUser recipient)
+        /// <summary> Creates a private channel. </summary>
+        /// <param name="recipient">The recipient for this private channel.</param>
+        public void CreatePrivateChannel(DiscordUser recipient, DiscordPrivateChannelCallback callback)
         {
-            CreatePrivateChannel(user.ID, recipient.ID);
+            CreatePrivateChannel(user.ID, recipient.ID, callback);
         }
 
         /// <summary>
@@ -493,52 +534,61 @@ namespace DiscordUnity
         /// <param name="servername">The name of the server.</param>
         /// <param name="region">The region for the server.</param>
         /// <param name="icon">The icon for the server.</param>
-        public void CreateServer(string servername, DiscordRegion region, Texture2D icon = null)
+        public void CreateServer(string servername, DiscordRegion region, Texture2D icon, DiscordServerCallback callback)
         {
             if (!isOnline) return;
-            Createserver(servername, region.name.ToLower().Replace(' ', '-'), icon);
+            Createserver(servername, region.name.ToLower().Replace(' ', '-'), icon, callback);
         }
+
         /// <summary>
         /// Creates a server.
         /// </summary>
         /// <param name="servername">The name of the server.</param>
         /// <param name="region">The region for the server.</param>
         /// <param name="icon">The icon for the server.</param>
-        public void CreateServer(string servername, string region, Texture2D icon = null)
+        public void CreateServer(string servername, string region, Texture2D icon, DiscordServerCallback callback)
         {
             if (!isOnline) return;
-            Createserver(servername, region.ToLower().Replace(' ', '-'), icon);
+            Createserver(servername, region.ToLower().Replace(' ', '-'), icon, callback);
+        }
+
+        /// <summary>
+        /// Gets a fresh copy of the servers.
+        /// </summary>
+        public void GetServerList(DiscordServersCallback callback)
+        {
+            GetServers(callback);
         }
 
         /// <summary>
         /// Gets more info about the invite;
         /// </summary>
         /// <param name="invite">The code of the invite.</param>
-        public void GetInvite(string invite)
+        public void GetInvite(string invite, DiscordInviteCallback callback)
         {
             if (!isOnline) return;
-            Getinvite(invite);
+            Getinvite(invite, callback);
         }
 
         /// <summary>
         /// Accepts the invite.
         /// </summary>
         /// <param name="invite">The code of the invite.</param>
-        public void AcceptInvite(string invite)
+        public void AcceptInvite(string invite, DiscordInviteCallback callback)
         {
             if (!isOnline) return;
             if (isBot) return;
-            Acceptinvite(invite);
+            Acceptinvite(invite, callback);
         }
 
         /// <summary>
         /// Deletes the invite.
         /// </summary>
         /// <param name="invite">The code of the invite.</param>
-        public void DeleteInvite(string invite)
+        public void DeleteInvite(string invite, DiscordInviteCallback callback)
         {
             if (!isOnline) return;
-            Deleteinvite(invite);
+            Deleteinvite(invite, callback);
         }
 
         /// <summary>
@@ -556,48 +606,50 @@ namespace DiscordUnity
         /// <summary>
         /// Gets more info about active maintenances;
         /// </summary>
-        public void GetActiveMaintenances()
+        public void GetActiveMaintenances(DiscordStatusCallback callback)
         {
             if (!isOnline) return;
-            GetactiveMaintenances();
+            GetactiveMaintenances(callback);
         }
 
         /// <summary>
         /// Gets more info about upcoming maintenances;
         /// </summary>
-        public void GetUpcomingMaintenances()
+        public void GetUpcomingMaintenances(DiscordStatusCallback callback)
         {
             if (!isOnline) return;
-            GetupcomingMaintenances();
+            GetupcomingMaintenances(callback);
         }
 
         /// <summary>
         /// Edits the profile of the current connected account.
         /// </summary>
-        /// <param name="avatar">A new avatar..</param>
+        /// <param name="avatar">A new avatar.</param>
         /// <param name="email">A new email.</param>
         /// <param name="username">A new username.</param>
         /// <param name="password">The old password.</param>
         /// <param name="new_password">A new password.</param>
-        public void EditProfile(Texture2D avatar, string email, string username, string password, string newPassword)
+        public void EditProfile(Texture2D avatar, string email, string username, string password, string newPassword, DiscordUserCallback callback)
         {
             if (!isOnline) return;
-            Editprofile(avatar, email, newPassword, password, username);
+            Editprofile(avatar, email, newPassword, password, username, callback);
         }
 
         /// <summary>
         /// Gets info about regions.
         /// </summary>
-        public void GetRegions()
+        public void GetRegions(DiscordRegionsCallback callback)
         {
             if (!isOnline) return;
-            GetServerRegions();
+            GetServerRegions(callback);
         }
-        
-        public void GetVoiceClient(DiscordChannel channel, bool muted = false, bool deaf = false)
-        {
-            if (channel.type != DiscordChannelType.Voice) return;
 
+        /// <summary> Starts a voiceclient with a channel. </summary>
+        /// <param name="channel">The channel for this voiceclient (one per server).</param>
+        /// <param name="muted">Is this voiceclient muted?</param>
+        /// <param name="deaf">Is this voiceclient deaf?</param>
+        public void GetVoiceClient(DiscordVoiceChannel channel, bool muted, bool deaf, DiscordVoiceCallback callback)
+        {
             if (voiceClients.ContainsKey(channel.serverID))
             {
                 unityInvoker.Enqueue(() => OnVoiceClientOpened(this, new DiscordVoiceClientArgs() { client = this, voiceClient = voiceClients[channel.serverID] }));
@@ -621,6 +673,11 @@ namespace DiscordUnity
 
             Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
             socket.Send(JsonUtility.ToJson(args));
+        }
+
+        public void GetChannelByID(string channelID, DiscordChannelCallback callback)
+        {
+            GetChannel(channelID, callback);
         }
         #endregion
 
@@ -649,7 +706,7 @@ namespace DiscordUnity
                 return;
             }
 
-            Call(HttpMethod.Get, "https://discordapp.com/api/gateway", OnGetGatewayUrl);
+            Call(HttpMethod.Get, "https://discordapp.com/api/gateway", OnGetGatewayUrl, (result) => { unityInvoker.Enqueue(() => logincallback(this, null, new DiscordError(result))); });
         }
 
         internal void GetOfflineServerMembers(string serverID, string filter, int limit)
@@ -690,6 +747,7 @@ namespace DiscordUnity
             socket.OnOpen += (sender, e) =>
             {
                 SendIdentifyPacket();
+                unityInvoker.Enqueue(() => logincallback(this, "Client opened.", new DiscordError()));
             };
 
             socket.OnClose += (sender, e) =>
@@ -849,6 +907,7 @@ namespace DiscordUnity
         {
             public HttpMethod method;
             public CallResult result;
+            public CallResult error;
             public HttpWebRequest request;
         }
 
@@ -859,7 +918,7 @@ namespace DiscordUnity
 
         internal static string APIurl = "https://discordapp.com/api/";
 
-        internal void Call(HttpMethod method, string url, CallResult result = null, string content = null)
+        internal void Call(HttpMethod method, string url, CallResult result = null, CallResult error = null, string content = null)
         {
             if (blockSend)
             {
@@ -878,29 +937,29 @@ namespace DiscordUnity
                 {
                     case HttpMethod.Post:
                         httpRequest.Method = "POST";
-                        if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, error = error, request = httpRequest });
                         else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
                         break;
 
                     case HttpMethod.Get:
                         httpRequest.Method = "GET";
-                        httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, error = error, request = httpRequest });
                         break;
 
                     case HttpMethod.Patch:
                         httpRequest.Method = "PATCH";
-                        httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
+                        httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, error = error, request = httpRequest });
                         break;
 
                     case HttpMethod.Put:
                         httpRequest.Method = "PUT";
-                        if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
-                        else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
+                        if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, error = error, request = httpRequest });
+                        else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, error = error, request = httpRequest });
                         break;
 
                     case HttpMethod.Delete:
                         httpRequest.Method = "DELETE";
-                        httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, request = httpRequest });
+                        httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, error = error, request = httpRequest });
                         break;
                 }
             }
@@ -909,15 +968,16 @@ namespace DiscordUnity
             {
                 Debug.LogError("#Main Call");
                 Debug.LogError(e.Message);
+                error(e.Message);
             }
         }
 
         private void OnRequestStream(IAsyncResult result)
         {
+            RequestStateJSON state = (RequestStateJSON)result.AsyncState;
+
             try
             {
-                RequestStateJSON state = (RequestStateJSON)result.AsyncState;
-
                 using (StreamWriter writer = new StreamWriter(state.request.EndGetRequestStream(result)))
                 {
                     //Debugger.WriteLine("Send: " + state.content);
@@ -933,6 +993,7 @@ namespace DiscordUnity
             {
                 Debug.LogError("#Request Call");
                 Debug.LogError(e.Message);
+                state.error(e.Message);
             }
         }
 
@@ -974,13 +1035,17 @@ namespace DiscordUnity
                     unityInvoker.Enqueue(() => OnSendBlocked(this, new DiscordSendRateArgs() { client = this, duration = duration }));
                     blockThread = new Thread(DoBlock);
                     blockThread.Start(duration);
+                    return;
                 }
 
                 if (e.Message.Contains("(502)")) // Bad request
                 {
                     Thread.Sleep(2000);
-                    Call(state.method, state.request.RequestUri.AbsolutePath, state.result, (state.GetType() == typeof(RequestStateJSON)) ? ((RequestStateJSON)state).content : null);
+                    Call(state.method, state.request.RequestUri.AbsolutePath, state.result, state.error, (state.GetType() == typeof(RequestStateJSON)) ? ((RequestStateJSON)state).content : null);
+                    return;
                 }
+
+                state.error(e.Message);
             }
         }
 
@@ -993,7 +1058,7 @@ namespace DiscordUnity
             unityInvoker.Enqueue(() => OnSendUnblocked(this, new DiscordSendRateArgs() { client = this, duration = 0 }));
         }
 
-        public void UploadFile(string url, string file)
+        private void UploadFile(string url, string file, CallResult result, CallResult error)
         {
             string boundary = "---------------------------" + DateTime.Now.Ticks.ToString("x");
             HttpWebRequest httpRequest = (HttpWebRequest)WebRequest.Create(url);
@@ -1004,7 +1069,7 @@ namespace DiscordUnity
             httpRequest.KeepAlive = true;
             httpRequest.Credentials = CredentialCache.DefaultCredentials;
 
-            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestFileStream), new RequestStateJSON() { content = file + boundary, request = httpRequest });
+            httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestFileStream), new RequestStateJSON() { content = file + boundary, result = result, error = error, request = httpRequest });
         }
 
         private void OnRequestFileStream(IAsyncResult result)
@@ -1043,38 +1108,79 @@ namespace DiscordUnity
 
         private string channelurl = "https://discordapp.com/api/channels/";
 
-        internal void GetChannel(string channelID)
+        internal void GetChannel(string channelID, DiscordChannelCallback callback)
         {
-            Call(HttpMethod.Get, channelurl + channelID, null);
+            Call(HttpMethod.Get, channelurl + channelID, (result) =>
+            {
+                DiscordChannelJSON json = JsonUtility.FromJson<DiscordChannelJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, (json.type == "text") ? new DiscordTextChannel(this, json) as DiscordChannel : new DiscordVoiceChannel(this, json) as DiscordChannel, new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void CreateChannel(string serverID, string channelname, string channeltype = "text")
+        internal void CreateChannel(string serverID, string channelname, string channeltype, DiscordChannelCallback callback)
         {
             CreateChannelArgs args = new CreateChannelArgs() { name = channelname, type = channeltype };
-            Call(HttpMethod.Post, APIurl + "guilds/" + serverID + "/channels", null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Post, APIurl + "guilds/" + serverID + "/channels", (result) => 
+            {
+                DiscordChannelJSON json = JsonUtility.FromJson<DiscordChannelJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, (json.type == "text") ? new DiscordTextChannel(this, json) as DiscordChannel : new DiscordVoiceChannel(this, json) as DiscordChannel, new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void EditChannel(string channelID, string channelname, string topic, int position = 0)
+        internal void EditChannel(string channelID, string channelname, string topic, int position, DiscordTextChannelCallback callback)
         {
             EditChannelArgs args = new EditChannelArgs() { name = channelname, position = position, topic = topic };
-            Call(HttpMethod.Patch, channelurl + channelID, null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Patch, channelurl + channelID, (result) =>
+            {
+                DiscordChannelJSON json = JsonUtility.FromJson<DiscordChannelJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordTextChannel(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void DeleteChannel(string channelID)
+        internal void EditVoiceChannel(string channelID, string channelname, int position, int bitrate, int limit, DiscordVoiceChannelCallback callback)
         {
-            Call(HttpMethod.Delete, channelurl + channelID, null);
+            EditVoiceChannelArgs args = new EditVoiceChannelArgs() { name = channelname, position = position, bitrate = bitrate, user_limit = limit };
+            Call(HttpMethod.Patch, channelurl + channelID, (result) =>
+            {
+                DiscordChannelJSON json = JsonUtility.FromJson<DiscordChannelJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordVoiceChannel(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void BroadcastTyping(string channelID)
+        internal void DeleteChannel(string channelID, DiscordChannelCallback callback)
         {
-            Call(HttpMethod.Post, channelurl + channelID + "/typing", null);
+            Call(HttpMethod.Delete, channelurl + channelID, (result) =>
+            {
+                DiscordChannelJSON json = JsonUtility.FromJson<DiscordChannelJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, (json.type == "text") ? new DiscordTextChannel(this, json) as DiscordChannel : new DiscordVoiceChannel(this, json) as DiscordChannel, new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
+        }
+
+        internal void BroadcastTyping(string channelID, DiscordCallback callback)
+        {
+            Call(HttpMethod.Post, channelurl + channelID + "/typing", (result) =>
+            {
+                unityInvoker.Enqueue(() => callback(this, "Typing broadcasted.", new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
         //
         // Messages
         //
 
-        internal void GetMessages(string channelID, int limit, string messageID, bool before)
+        internal DiscordMessage[] GetMessagesArray(DiscordMessageJSON[] messages)
+        {
+            List<DiscordMessage> result = new List<DiscordMessage>();
+
+            foreach (DiscordMessageJSON message in messages)
+            {
+                result.Add(new DiscordMessage(this, message));
+            }
+
+            return result.ToArray();
+        }
+
+        internal void GetMessages(string channelID, int limit, string messageID, bool before, DiscordMessagesCallback callback)
         {
             string url = channelurl + channelID + "/messages?&limit=" + limit;
             if (before) url += "&before=" + messageID;
@@ -1085,15 +1191,11 @@ namespace DiscordUnity
                 string substring = "{\"messages\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
                 DiscordMessageJSONWrapper wrapper = JsonUtility.FromJson<DiscordMessageJSONWrapper>(result);
-
-                foreach (DiscordMessageJSON message in wrapper.messages)
-                {
-                    unityInvoker.Enqueue(() => OnMessageUpdated(_channels[message.channel_id], new DiscordMessageArgs() { message = new DiscordMessage(this, message), client = this }));
-                }
-            });
+                unityInvoker.Enqueue(() => callback(this, GetMessagesArray(wrapper.messages), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void GetMessages(string channelID, int limit)
+        internal void GetMessages(string channelID, int limit, DiscordMessagesCallback callback)
         {
             string url = channelurl + channelID + "/messages?&limit=" + limit;
 
@@ -1102,54 +1204,83 @@ namespace DiscordUnity
                 string substring = "{\"messages\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
                 DiscordMessageJSONWrapper wrapper = JsonUtility.FromJson<DiscordMessageJSONWrapper>(result);
-
-                foreach (DiscordMessageJSON message in wrapper.messages)
-                {
-                    unityInvoker.Enqueue(() => OnMessageUpdated(_channels[message.channel_id], new DiscordMessageArgs() { message = new DiscordMessage(this, message), client = this }));
-                }
-            });
+                unityInvoker.Enqueue(() => callback(this, GetMessagesArray(wrapper.messages), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void SendFile(string channelID, string file)
+        internal void SendFile(string channelID, string file, DiscordCallback callback)
         {
-            UploadFile(channelurl + channelID + "/messages", file);
+            UploadFile(channelurl + channelID + "/messages", file, (result) => { unityInvoker.Enqueue(() => callback(this, "File send.", new DiscordError())); }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void SendMessage(string channelID, string content, int nonce, bool textToSpeech)
+        internal void SendMessage(string channelID, string content, int nonce, bool textToSpeech, DiscordMessageCallback callback)
         {
             SendMessageArgs args = new SendMessageArgs() { content = content, nonce = nonce, tts = textToSpeech };
-            Call(HttpMethod.Post, channelurl + channelID + "/messages", null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Post, channelurl + channelID + "/messages", (result) =>
+            {
+                DiscordMessageJSON json = JsonUtility.FromJson<DiscordMessageJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordMessage(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void EditMessage(string channelID, string messageID, string content)
+        internal void EditMessage(string channelID, string messageID, string content, DiscordMessageCallback callback)
         {
             EditMessageArgs args = new EditMessageArgs() { content = content };
-            Call(HttpMethod.Patch, channelurl + channelID + "/messages/" + messageID, null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Patch, channelurl + channelID + "/messages/" + messageID, (result) =>
+            {
+                DiscordMessageJSON json = JsonUtility.FromJson<DiscordMessageJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordMessage(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void DeleteMessage(string channelID, string messageID)
+        internal void DeleteMessage(string channelID, string messageID, DiscordMessageCallback callback)
         {
-            Call(HttpMethod.Delete, channelurl + channelID + "/messages/" + messageID, null);
+            Call(HttpMethod.Delete, channelurl + channelID + "/messages/" + messageID, (result) =>
+            {
+                DiscordMessageJSON json = JsonUtility.FromJson<DiscordMessageJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordMessage(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void AcknowledgeMessage(string channelID, string messageID)
+        internal void AcknowledgeMessage(string channelID, string messageID, DiscordMessageCallback callback)
         {
-            Call(HttpMethod.Post, channelurl + channelID + "/messages/" + messageID + "/ack", null);
+            Call(HttpMethod.Post, channelurl + channelID + "/messages/" + messageID + "/ack", (result) =>
+            {
+                DiscordMessageJSON json = JsonUtility.FromJson<DiscordMessageJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordMessage(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
         //
         // Permissions
         //
 
-        internal void CreateOrEditPermission(string channelID, string targetID, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        internal void CreateOrEditPermissionRole(string channelID, string roleID, DiscordPermission[] allowed, DiscordPermission[] denied, DiscordRoleCallback callback)
         {
-            CreateOrEditPermissionArgs args = new CreateOrEditPermissionArgs() { allow = Utils.GetPermissions(allowed), deny = Utils.GetPermissions(denied), id = targetID, type = type == TargetType.Member ? "member" : "role" };
-            Call(HttpMethod.Put, channelurl + channelID + "/permissions/" + targetID, null, JsonUtility.ToJson(args));
+            CreateOrEditPermissionArgs args = new CreateOrEditPermissionArgs() { allow = Utils.GetPermissions(allowed), deny = Utils.GetPermissions(denied), id = roleID, type = "role" };
+            Call(HttpMethod.Put, channelurl + channelID + "/permissions/" + roleID, (result) =>
+            {
+                Debug.Log(result);
+                //DiscordRoleJSON json = JsonUtility.FromJson<DiscordRoleJSON>(result);
+                //unityInvoker.Enqueue(() => callback(this, new DiscordRole(this, json, ""), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void DeletePermission(string channelID, string targetID)
+        internal void CreateOrEditPermissionUser(string channelID, string userID, DiscordPermission[] allowed, DiscordPermission[] denied, DiscordUserCallback callback)
         {
-            Call(HttpMethod.Delete, channelurl + channelID + "/permissions/" + targetID);
+            CreateOrEditPermissionArgs args = new CreateOrEditPermissionArgs() { allow = Utils.GetPermissions(allowed), deny = Utils.GetPermissions(denied), id = userID, type = "member" };
+            Call(HttpMethod.Put, channelurl + channelID + "/permissions/" + userID, (result) =>
+            {
+                Debug.Log(result);
+                //DiscordMemberJSON json = JsonUtility.FromJson<DiscordMemberJSON>(result);
+                //unityInvoker.Enqueue(() => callback(this, new DiscordUser(this, json, ""), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
+        }
+
+        internal void DeletePermission(string channelID, string targetID, DiscordCallback callback)
+        {
+            Call(HttpMethod.Delete, channelurl + channelID + "/permissions/" + targetID, (result) => { unityInvoker.Enqueue(() => callback(this, "Permission deleted.", new DiscordError())); }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
+
         }
 
         //
@@ -1158,7 +1289,7 @@ namespace DiscordUnity
 
         private static string serverurl = "https://discordapp.com/api/guilds/";
 
-        internal void Createserver(string servername, string region, Texture2D icon)
+        internal void Createserver(string servername, string region, Texture2D icon, DiscordServerCallback callback)
         {
             string iconData = null;
 
@@ -1168,10 +1299,14 @@ namespace DiscordUnity
             }
 
             CreateServerArgs args = new CreateServerArgs() { name = servername, region = region, icon = iconData };
-            Call(HttpMethod.Post, serverurl.TrimEnd('/'), null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Post, serverurl.TrimEnd('/'), (result) =>
+            {
+                DiscordServerJSON json = JsonUtility.FromJson<DiscordServerJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordServer(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void EditServer(string serverID, string servername, string ownerID, string region, int? verificationLevel, string afkchannelID, int? timeout, Texture2D icon, Texture2D splash)
+        internal void EditServer(string serverID, string servername, string ownerID, string region, int? verificationLevel, string afkchannelID, int? timeout, Texture2D icon, Texture2D splash, DiscordServerCallback callback)
         {
             string iconData = icon == null ? null : "data:image/jpeg;base64," + Convert.ToBase64String(icon.EncodeToJPG());
             string splashData = splash == null ? null : "data:image/jpeg;base64," + Convert.ToBase64String(splash.EncodeToJPG());
@@ -1186,98 +1321,187 @@ namespace DiscordUnity
             specialJson += splash == null ? "" : string.Format("\"splash\":\"{0}\",", splashData);
             specialJson = specialJson.TrimEnd(',');
             specialJson += "}";
-            Call(HttpMethod.Patch, serverurl + serverID, null, specialJson);
+            Call(HttpMethod.Patch, serverurl + serverID, (result) =>
+            {
+                DiscordServerJSON json = JsonUtility.FromJson<DiscordServerJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordServer(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, specialJson);
         }
 
-        internal void LeaveServer(string serverID)
+        internal void LeaveServer(string serverID, DiscordServerCallback callback)
         {
-            Call(HttpMethod.Delete, APIurl + "users/@me/guilds/" + serverID, null);
+            Call(HttpMethod.Delete, APIurl + "users/@me/guilds/" + serverID, (result) =>
+            {
+                DiscordServerJSON json = JsonUtility.FromJson<DiscordServerJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordServer(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void DeleteServer(string serverID)
+        internal void DeleteServer(string serverID, DiscordServerCallback callback)
         {
-            Call(HttpMethod.Delete, serverurl + serverID, null);
+            Call(HttpMethod.Delete, serverurl + serverID, (result) =>
+            {
+                DiscordServerJSON json = JsonUtility.FromJson<DiscordServerJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordServer(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void GetServers()
+        internal void GetServers(DiscordServersCallback callback)
         {
-            Call(HttpMethod.Get, APIurl + "users/@me/guilds", null);
+            Call(HttpMethod.Get, APIurl + "users/@me/guilds", (result) =>
+            {
+                string substring = "{\"servers\":";
+                result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
+                DiscordServerJSONWrapper wrapper = JsonUtility.FromJson<DiscordServerJSONWrapper>(result);
+                unityInvoker.Enqueue(() => callback(this, GetServersArray(wrapper.servers), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void GetServerChannels(string serverID)
+        internal void GetServerChannels(string serverID, DiscordChannelsCallback callback)
         {
             Call(HttpMethod.Get, serverurl + serverID + "/channels", (result) =>
             {
                 string substring = "{\"channels\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
                 DiscordChannelJSONWrapper wrapper = JsonUtility.FromJson<DiscordChannelJSONWrapper>(result);
+                unityInvoker.Enqueue(() => callback(this, GetChannelsArray(wrapper.channels), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
+        }
 
-                foreach (DiscordChannelJSON channel in wrapper.channels)
-                {
-                    unityInvoker.Enqueue(() => OnChannelUpdated(_servers[channel.guild_id], new DiscordChannelArgs() { channel = new DiscordChannel(this, channel), client = this }));
-                }
-            });
+        internal DiscordServer[] GetServersArray(DiscordServerJSON[] servers)
+        {
+            List<DiscordServer> result = new List<DiscordServer>();
+
+            foreach (DiscordServerJSON server in servers)
+            {
+                result.Add(new DiscordServer(this, server));
+            }
+
+            return result.ToArray();
+        }
+
+        internal DiscordChannel[] GetChannelsArray(DiscordChannelJSON[] channels)
+        {
+            List<DiscordChannel> result = new List<DiscordChannel>();
+
+            foreach (DiscordChannelJSON channel in channels)
+            {
+                result.Add((channel.type == "text") ? new DiscordTextChannel(this, channel) as DiscordChannel : new DiscordVoiceChannel(this, channel) as DiscordChannel);
+            }
+
+            return result.ToArray();
         }
 
         //
         // Members
         //
 
-        internal void EditMember(string serverID, string userID, EditMemberArgs args)
+        internal void EditMember(string serverID, string userID, EditMemberArgs args, DiscordUserCallback callback)
         {
-            Call(HttpMethod.Patch, serverurl + serverID + "/members/" + userID, null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Patch, serverurl + serverID + "/members/" + userID, (result) =>
+            {
+                DiscordMemberJSON json = JsonUtility.FromJson<DiscordMemberJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordUser(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void KickMember(string serverID, string userID)
+        internal void KickMember(string serverID, string userID, DiscordUserCallback callback)
         {
-            Call(HttpMethod.Delete, serverurl + serverID + "/members/" + userID, null);
+            Call(HttpMethod.Delete, serverurl + serverID + "/members/" + userID, (result) =>
+            {
+                DiscordMemberJSON json = JsonUtility.FromJson<DiscordMemberJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordUser(this, json), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
         //
         // Bans
         //
 
-        internal void GetBans(string serverID)
+        internal DiscordUser[] GetUsersArray(DiscordMemberJSON[] users)
         {
-            Call(HttpMethod.Get, serverurl + serverID + "/bans", null);
+            List<DiscordUser> result = new List<DiscordUser>();
+
+            foreach (DiscordMemberJSON user in users)
+            {
+                result.Add(new DiscordUser(this, user));
+            }
+
+            return result.ToArray();
         }
 
-        internal void AddBan(string serverID, string userID, int clearPreviousDays)
+        internal void GetBans(string serverID, DiscordUsersCallback callback)
         {
-            Call(HttpMethod.Put, serverurl + serverID + "/bans/" + userID + "?delete-message-days=" + clearPreviousDays, null);
+            Call(HttpMethod.Get, serverurl + serverID + "/bans", (result) =>
+            {
+                Debug.Log(result);
+                //string substring = "{\"members\":";
+                //result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
+                //DiscordMemberJSONWrapper wrapper = JsonUtility.FromJson<DiscordMemberJSONWrapper>(result);
+                //unityInvoker.Enqueue(() => callback(this, GetUsersArray(wrapper.members), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void RemoveBan(string serverID, string userID)
+        internal void AddBan(string serverID, string userID, int clearPreviousDays, DiscordCallback callback)
         {
-            Call(HttpMethod.Delete, serverurl + serverID + "/bans/" + userID, null);
+            Call(HttpMethod.Put, serverurl + serverID + "/bans/" + userID + "?delete-message-days=" + clearPreviousDays, (result) =>
+            {
+                Debug.Log(result);
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
+        }
+
+        internal void RemoveBan(string serverID, string userID, DiscordCallback callback)
+        {
+            Call(HttpMethod.Delete, serverurl + serverID + "/bans/" + userID, (result) =>
+            {
+                Debug.Log(result);
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
         //
         // Roles
         //
 
-        internal void CreateRole(string serverID)
+        internal void CreateRole(string serverID, DiscordRoleCallback callback)
         {
-            Call(HttpMethod.Post, serverurl + serverID + "/roles", null);
+            Call(HttpMethod.Post, serverurl + serverID + "/roles", (result) =>
+            {
+                DiscordRoleJSON json = JsonUtility.FromJson<DiscordRoleJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordRole(this, json, serverID), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void EditRole(string serverID, string roleID, uint color, bool hoist, string name, DiscordPermission[] permissions)
+        internal void EditRole(string serverID, string roleID, uint color, bool hoist, string name, DiscordPermission[] permissions, DiscordRoleCallback callback)
         {
             EditRoleArgs args = new EditRoleArgs() { color = color, hoist = hoist, name = name, permissions = Utils.GetPermissions(permissions) };
-            Call(HttpMethod.Patch, serverurl + serverID + "/roles/" + roleID, null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Patch, serverurl + serverID + "/roles/" + roleID, (result) =>
+            {
+                DiscordRoleJSON json = JsonUtility.FromJson<DiscordRoleJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordRole(this, json, serverID), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void ReorderRoles(string serverID, DiscordRole[] roles)
+        internal void ReorderRoles(string serverID, DiscordRole[] roles, DiscordRolesCallback callback)
         {
-            Call(HttpMethod.Patch, serverurl + serverID + "/roles", null, JsonUtility.ToJson(GetRolesOrdered(roles)));
+            Call(HttpMethod.Patch, serverurl + serverID + "/roles", (result) =>
+            {
+                string substring = "{\"roles\":";
+                result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
+                DiscordRoleJSONWrapper wrapper = JsonUtility.FromJson<DiscordRoleJSONWrapper>(result);
+                unityInvoker.Enqueue(() => callback(this, GetRolesArray(serverID, wrapper.roles), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(GetRolesOrdered(roles)));
         }
 
-        internal void DeleteRole(string serverID, string roleID)
+        internal void DeleteRole(string serverID, string roleID, DiscordRoleCallback callback)
         {
-            Call(HttpMethod.Delete, serverurl + serverID + "/roles/" + roleID, null);
+            Call(HttpMethod.Delete, serverurl + serverID + "/roles/" + roleID, (result) =>
+            {
+                DiscordRoleJSON json = JsonUtility.FromJson<DiscordRoleJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordRole(this, json, serverID), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        private static DiscordRoleJSON[] GetRolesOrdered(DiscordRole[] roles)
+        internal static DiscordRoleJSON[] GetRolesOrdered(DiscordRole[] roles)
         {
             List<DiscordRoleJSON> rolesOrdered = new List<DiscordRoleJSON>();
 
@@ -1300,78 +1524,94 @@ namespace DiscordUnity
             return rolesOrdered.ToArray();
         }
 
+        internal DiscordRole[] GetRolesArray(string serverID, DiscordRoleJSON[] roles)
+        {
+            List<DiscordRole> result = new List<DiscordRole>();
+
+            foreach (DiscordRoleJSON role in roles)
+            {
+                result.Add(new DiscordRole(this, role, serverID));
+            }
+
+            return result.ToArray();
+        }
+
         //
         // Invites
         //
 
         private static string inviteurl = "https://discordapp.com/api/invite/";
 
-        internal void Getinvite(string inviteID)
+        internal void Getinvite(string inviteID, DiscordInviteCallback callback)
         {
             Call(HttpMethod.Get, inviteurl + inviteID, (result) =>
             {
                 DiscordBasicInviteJSON invite = JsonUtility.FromJson<DiscordBasicInviteJSON>(result);
-                unityInvoker.Enqueue(() => OnInviteUpdated(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-            });
+                unityInvoker.Enqueue(() => callback(this, new DiscordInvite(this, invite), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void Acceptinvite(string inviteID)
+        internal void Acceptinvite(string inviteID, DiscordInviteCallback callback)
         {
             Call(HttpMethod.Post, inviteurl + inviteID, (result) =>
             {
                 DiscordBasicInviteJSON invite = JsonUtility.FromJson<DiscordBasicInviteJSON>(result);
-                unityInvoker.Enqueue(() => OnInviteAccepted(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-            });
+                unityInvoker.Enqueue(() => callback(this, new DiscordInvite(this, invite), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void CreateInvite(string channelID, int maxAge, int maxUses, bool temporary, bool xkcdpass)
+        internal void CreateInvite(string channelID, int maxAge, int maxUses, bool temporary, bool xkcdpass, DiscordInviteCallback callback)
         {
             DiscordInviteJSON args = new DiscordInviteJSON() { max_age = maxAge, max_uses = maxUses, temporary = temporary, xkcdpass = xkcdpass };
 
             Call(HttpMethod.Post, APIurl + "channels/" + channelID + "/invites", (result) =>
             {
                 DiscordRichInviteJSON invite = JsonUtility.FromJson<DiscordRichInviteJSON>(result);
-                unityInvoker.Enqueue(() => OnInviteCreated(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-            }, JsonUtility.ToJson(args));
+                unityInvoker.Enqueue(() => callback(this, new DiscordInvite(this, invite), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
-        internal void Deleteinvite(string inviteID)
+        internal void Deleteinvite(string inviteID, DiscordInviteCallback callback)
         {
             Call(HttpMethod.Delete, inviteurl + inviteID, (result) =>
             {
                 DiscordBasicInviteJSON invite = JsonUtility.FromJson<DiscordBasicInviteJSON>(result);
-                unityInvoker.Enqueue(() => OnInviteDeleted(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-            });
+                unityInvoker.Enqueue(() => callback(this, new DiscordInvite(this, invite), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void GetServerInvites(string serverID)
+        internal void GetServerInvites(string serverID, DiscordInvitesCallback callback)
         {
             Call(HttpMethod.Get, APIurl + "guilds/" + serverID + "/invites", (result) =>
             {
                 string substring = "{\"invites\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
                 DiscordRichInviteJSONWrapper wrapper = JsonUtility.FromJson<DiscordRichInviteJSONWrapper>(result);
-
-                foreach (DiscordRichInviteJSON invite in wrapper.invites)
-                {
-                    unityInvoker.Enqueue(() => OnInviteUpdated(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-                }
-            });
+                unityInvoker.Enqueue(() => callback(this, GetInvitesArray(wrapper.invites), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void GetChannelInvites(string channelID)
+        internal void GetChannelInvites(string channelID, DiscordInvitesCallback callback)
         {
             Call(HttpMethod.Get, APIurl + "channels/" + channelID + "/invites", (result) =>
             {
                 string substring = "{\"invites\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
                 DiscordRichInviteJSONWrapper wrapper = JsonUtility.FromJson<DiscordRichInviteJSONWrapper>(result);
+                unityInvoker.Enqueue(() => callback(this, GetInvitesArray(wrapper.invites), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
+        }
 
-                foreach (DiscordRichInviteJSON invite in wrapper.invites)
-                {
-                    unityInvoker.Enqueue(() => OnInviteUpdated(this, new DiscordInviteArgs() { invite = new DiscordInvite(this, invite), client = this }));
-                }
-            });
+        internal DiscordInvite[] GetInvitesArray(DiscordRichInviteJSON[] invites)
+        {
+            List<DiscordInvite> result = new List<DiscordInvite>();
+
+            foreach (DiscordRichInviteJSON invite in invites)
+            {
+                result.Add(new DiscordInvite(this, invite));
+            }
+
+            return result.ToArray();
         }
 
         //
@@ -1380,20 +1620,22 @@ namespace DiscordUnity
 
         private static string statusurl = "https://status.discordapp.com/api/v2/sheduled-maintenances/";
 
-        private void OnStatusPacket(string result)
+        internal void GetactiveMaintenances(DiscordStatusCallback callback)
         {
-            DiscordStatusPacketJSON status = JsonUtility.FromJson<DiscordStatusPacketJSON>(result);
-            unityInvoker.Enqueue(() => OnStatusReceived(this, new DiscordStatusArgs() { packet = new DiscordStatusPacket(status), client = this }));
+            Call(HttpMethod.Get, statusurl + "active.json", (result) =>
+            {
+                DiscordStatusPacketJSON status = JsonUtility.FromJson<DiscordStatusPacketJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordStatusPacket(status), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void GetactiveMaintenances()
+        internal void GetupcomingMaintenances(DiscordStatusCallback callback)
         {
-            Call(HttpMethod.Get, statusurl + "active.json", OnStatusPacket);
-        }
-
-        internal void GetupcomingMaintenances()
-        {
-            Call(HttpMethod.Get, statusurl + "upcoming.json", OnStatusPacket);
+            Call(HttpMethod.Get, statusurl + "upcoming.json", (result) =>
+            {
+                DiscordStatusPacketJSON status = JsonUtility.FromJson<DiscordStatusPacketJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordStatusPacket(status), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
         //
@@ -1402,25 +1644,29 @@ namespace DiscordUnity
 
         private static string userurl = "https://discordapp.com/api/users/";
 
-        internal void CreatePrivateChannel(string userID, string recipientID)
+        internal void CreatePrivateChannel(string userID, string recipientID, DiscordPrivateChannelCallback callback)
         {
             CreatePrivateChannelArgs args = new CreatePrivateChannelArgs() { recipient_id = recipientID };
-            Call(HttpMethod.Post, userurl + userID + "/channels", null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Post, userurl + userID + "/channels", (result) =>
+            {
+                DiscordPrivateChannelJSON channel = JsonUtility.FromJson<DiscordPrivateChannelJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordPrivateChannel(this, channel), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
         //
         // Profile
         //
 
-        internal void Editprofile(Texture2D avatar, string email, string new_password, string password, string username)
+        internal void Editprofile(Texture2D avatar, string email, string new_password, string password, string username, DiscordUserCallback callback)
         {
             string avatarData = "data:image/jpeg;base64," + Convert.ToBase64String(avatar.EncodeToJPG());
             EditProfileArgs args = new EditProfileArgs() { avatar = avatarData, email = email, new_password = new_password, password = password, username = username };
             Call(HttpMethod.Patch, userurl + "@me", (result) =>
             {
                 DiscordProfileJSON profile = JsonUtility.FromJson<DiscordProfileJSON>(result);
-                unityInvoker.Enqueue(() => OnProfileUpdated(this, new DiscordUserArgs() { user = new DiscordUser(this, profile), client = this }));
-            }, JsonUtility.ToJson(args));
+                unityInvoker.Enqueue(() => callback(this, new DiscordUser(this, profile), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
         }
 
         //
@@ -1429,28 +1675,37 @@ namespace DiscordUnity
 
         private static string voiceurl = "https://discordapp.com/api/voice/";
 
-        internal void GetServerRegions()
+        internal void GetServerRegions(DiscordRegionsCallback callback)
         {
             Call(HttpMethod.Get, voiceurl + "regions", (result) =>
             {
                 string substring = "{\"regions\":";
                 result = result.Insert(0, substring).Insert(result.Length + substring.Length, "}");
                 DiscordRegionJSONWrapper wrapper = JsonUtility.FromJson<DiscordRegionJSONWrapper>(result);
-                List<DiscordRegion> regionList = new List<DiscordRegion>();
-
-                foreach (DiscordRegionJSON region in wrapper.regions)
-                {
-                    regionList.Add(new DiscordRegion(region));
-                }
-
-                unityInvoker.Enqueue(() => OnRegionsReceived(this, new DiscordRegionArgs() { regions = regionList.ToArray(), client = this }));
-            });
+                unityInvoker.Enqueue(() => callback(this, GetRegionsArray(wrapper.regions), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); });
         }
 
-        internal void MoveMember(string serverID, string memberID, string channelID)
+        internal void MoveMember(string serverID, string memberID, string channelID, DiscordServerCallback callback)
         {
             MoveMemberArgs args = new MoveMemberArgs() { channel_id = channelID };
-            Call(HttpMethod.Patch, APIurl + "guilds/" + serverID + "/members/" + memberID, null, JsonUtility.ToJson(args));
+            Call(HttpMethod.Patch, APIurl + "guilds/" + serverID + "/members/" + memberID, (result) =>
+            {
+                DiscordServerJSON server = JsonUtility.FromJson<DiscordServerJSON>(result);
+                unityInvoker.Enqueue(() => callback(this, new DiscordServer(this, server), new DiscordError()));
+            }, (result) => { unityInvoker.Enqueue(() => callback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(args));
+        }
+
+        internal DiscordRegion[] GetRegionsArray(DiscordRegionJSON[] regions)
+        {
+            List<DiscordRegion> result = new List<DiscordRegion>();
+
+            foreach (DiscordRegionJSON region in regions)
+            {
+                result.Add(new DiscordRegion(region));
+            }
+
+            return result.ToArray();
         }
         #endregion
     }

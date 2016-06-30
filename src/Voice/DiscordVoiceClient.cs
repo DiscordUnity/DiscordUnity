@@ -10,8 +10,11 @@ namespace DiscordUnity
 {
     public class DiscordVoiceClient : IDisposable
     {
+        /// <summary> Is this voiceclient online? </summary>
         public bool isOnline { get; internal set; } = false;
-        public DiscordChannel channel;
+        /// <summary> The channel if this voiceclient. </summary>
+        public DiscordVoiceChannel channel;
+        /// <summary> The server if this voiceclient. </summary>
         public DiscordServer server;
 
         internal string token;
@@ -19,11 +22,16 @@ namespace DiscordUnity
         internal int port;
         internal string sessionID;
         internal uint ssrc;
-        
+
+        /// <summary> SenderObject is the voiceclient. </summary>
         public EventHandler<DiscordMemberArgs> OnVoiceState = delegate { };
+        /// <summary> SenderObject is the voiceclient. </summary>
         public EventHandler<DiscordVoiceArgs> OnVoicePacketReceived = delegate { };
+        /// <summary> SenderObject is the voiceclient. </summary>
         public EventHandler<DiscordVoiceArgs> OnVoicePacketSend = delegate { };
+        /// <summary> SenderObject is the voiceclient. </summary>
         public EventHandler<DiscordUserSpeakingArgs> OnVoiceUserSpeaking = delegate { };
+        /// <summary> SenderObject is the voiceclient. </summary>
         public EventHandler<DiscordUserArgs> OnVoiceUserLeft = delegate { };
 
         private DiscordClient parent;
@@ -44,7 +52,7 @@ namespace DiscordUnity
         private OpusEncoder encoder;
         private OpusDecoder decoder;
 
-        internal DiscordVoiceClient(DiscordClient pclient, DiscordChannel pchannel)
+        internal DiscordVoiceClient(DiscordClient pclient, DiscordVoiceChannel pchannel)
         {
             parent = pclient;
             channel = pchannel;
@@ -52,7 +60,7 @@ namespace DiscordUnity
 
             try
             {
-                if (channel.ID != null && channel.type == DiscordChannelType.Voice)
+                if (channel.ID != null)
                 {
                     if (channel.bitrate > 0)
                     {
@@ -141,6 +149,7 @@ namespace DiscordUnity
             socket.Connect();
         }
 
+        /// <summary> Stops this voiceclient. </summary>
         public void Stop()
         {
             PayloadArgs<VoiceDisconnectArgs> args = new PayloadArgs<VoiceDisconnectArgs>()
@@ -160,6 +169,7 @@ namespace DiscordUnity
             parent.voiceClients.Remove(channel.serverID);
         }
 
+        /// <summary> You should use Stop(); </summary>
         public void Dispose()
         {
             if (isOnline)
@@ -187,6 +197,7 @@ namespace DiscordUnity
         }
 
         private bool _speaking;
+        /// <summary> Is this voiceclient speaking? </summary>
         public bool speaking
         {
             get
@@ -228,6 +239,7 @@ namespace DiscordUnity
             }
         }
 
+        /// <summary> Clears the sending voiceQueue. </summary>
         public void ClearVoiceQueue()
         {
             voiceToSend.Clear();
@@ -590,11 +602,15 @@ namespace DiscordUnity
             }
         }
 
+        /// <summary> Sends float based voice. </summary>
+        /// <param name="voice">The voicedata.</param>
         public void SendVoice(float[] voice)
         {
             SendVoice(Utils.FloatsToBytes(voice));
         }
 
+        /// <summary> Sends byte based voice. </summary>
+        /// <param name="voice">The voicedata.</param>
         public void SendVoice(byte[] voice)
         {
             voiceToSend.Enqueue(voice);

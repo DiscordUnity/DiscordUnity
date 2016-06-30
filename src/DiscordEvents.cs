@@ -5,37 +5,37 @@ namespace DiscordUnity
     public partial class DiscordClient
     {
 
-        /// <summary> SenderObject is the client.</summary>
+        /// <summary> SenderObject is the client. </summary>
         public EventHandler<DiscordEventArgs> OnClientOpened = delegate { };
-        /// <summary> SenderObject is the client.</summary>
+        /// <summary> SenderObject is the client. </summary>
         public EventHandler<DiscordEventArgs> OnClientClosed = delegate { };
-        /// <summary> SenderObject is the client.</summary>
+        /// <summary> SenderObject is the client. </summary>
         public EventHandler<DiscordRegionArgs> OnRegionsReceived = delegate { };
 
-        /// <summary> SenderObject is the client.</summary>
+        /// <summary> SenderObject is the client. </summary>
         public EventHandler<DiscordDMArgs> OnDMCreated = delegate { };
-        /// <summary> SenderObject is the client.</summary>
+        /// <summary> SenderObject is the client. </summary>
         public EventHandler<DiscordDMArgs> OnDMDeleted = delegate { };
 
-        /// <summary> SenderObject is the server.</summary>
-        public EventHandler<DiscordChannelArgs> OnChannelCreated = delegate { };
-        /// <summary> SenderObject is the server.</summary>
-        public EventHandler<DiscordChannelArgs> OnChannelUpdated = delegate { };
-        /// <summary> SenderObject is the server.</summary>
-        public EventHandler<DiscordChannelArgs> OnChannelDeleted = delegate { };
+        /// <summary> SenderObject is the server. </summary>
+        public EventHandler<DiscordTextChannelArgs> OnChannelCreated = delegate { };
+        /// <summary> SenderObject is the server. </summary>
+        public EventHandler<DiscordTextChannelArgs> OnChannelUpdated = delegate { };
+        /// <summary> SenderObject is the server. </summary>
+        public EventHandler<DiscordTextChannelArgs> OnChannelDeleted = delegate { };
 
-        /// <summary> SenderObject is the channel.</summary>
+        /// <summary> SenderObject is the channel. </summary>
         public EventHandler<DiscordMessageArgs> OnMessageCreated = delegate { };
-        /// <summary> SenderObject is the channel.</summary>
+        /// <summary> SenderObject is the channel. </summary>
         public EventHandler<DiscordMessageArgs> OnMessageUpdated = delegate { };
-        /// <summary> SenderObject is the channel.</summary>
+        /// <summary> SenderObject is the channel. </summary>
         public EventHandler<DiscordMessageArgs> OnMessageDeleted = delegate { };
 
-        /// <summary> SenderObject is the user.</summary>
+        /// <summary> SenderObject is the user. </summary>
         public EventHandler<DiscordPresenceArgs> OnPresenceUpdated = delegate { };
-        /// <summary> SenderObject is the channel.</summary>
+        /// <summary> SenderObject is the channel. </summary>
         public EventHandler<DiscordMemberArgs> OnTypingStarted = delegate { };
-        /// <summary> SenderObject is the channel.</summary>
+        /// <summary> SenderObject is the channel. </summary>
         public EventHandler<DiscordMemberArgs> OnTypingStopped = delegate { };
 
         /// <summary> SenderObject is the client.</summary>

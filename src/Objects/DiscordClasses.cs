@@ -24,8 +24,8 @@ namespace DiscordUnity
     public enum TargetType
     {
         Member,
-        Role 
-}
+        Role
+    }
 
     public enum DiscordChannelType
     {
@@ -58,13 +58,18 @@ namespace DiscordUnity
         VoiceMoveMembers = 24,
         VoiceUseActivationDetection = 25
     }
-    
+
     public class DiscordRegion
     {
+        /// <summary> The name of this region. </summary>
         public string name { get; internal set; }
+        /// <summary> The host of this region. </summary>
         public string hostname { get; internal set; }
+        /// <summary> The port of this region used by voiceClient. </summary>
         public int port { get; internal set; }
+        /// <summary> Is this region for vips? </summary>
         public bool vip { get; internal set; }
+        /// <summary> Is this the best server? </summary>
         public bool optimal { get; internal set; }
 
         internal string ID;
@@ -79,26 +84,37 @@ namespace DiscordUnity
             optimal = e.optimal;
         }
     }
-    
+
     public class DiscordInvite
     {
+        /// <summary> The code of this invite. </summary>
         public string code { get; internal set; }
+        /// <summary> The passcode of this invite. </summary>
         public string xkcdpass { get; internal set; }
+        /// <summary> The amount of uses left. </summary>
         public int uses { get; internal set; }
+        /// <summary> The maximun amount of uses. </summary>
         public int maxUses { get; internal set; }
+        /// <summary> The age. </summary>
         public int maxAge { get; internal set; }
+        /// <summary> Is this a temporary invite? </summary>
         public bool temporary { get; internal set; }
+        /// <summary> Is this invite revoked? </summary>
         public bool revoked { get; internal set; }
+        /// <summary> Who created this invite. </summary>
         public DiscordUser inviter { get; internal set; }
+        /// <summary> For what server is this invite. </summary>
         public DiscordServer server { get; internal set; }
+        /// <summary> For what channel is this invite. </summary>
         public DiscordChannel channel { get; internal set; }
+        /// <summary> When is this invite created? </summary>
         public DateTime createdAt { get; internal set; }
 
         internal DiscordInvite(DiscordClient parent, DiscordBasicInviteJSON invite)
         {
             code = invite.code;
             server = new DiscordServer(parent, invite.guild);
-            channel = new DiscordChannel(parent, invite.channel);
+            channel = (invite.channel.type == "text") ? new DiscordTextChannel(parent, invite.channel) as DiscordChannel : new DiscordVoiceChannel(parent, invite.channel) as DiscordChannel;
             xkcdpass = invite.xkcdpass;
         }
 
@@ -113,11 +129,14 @@ namespace DiscordUnity
             createdAt = DateTime.Parse(invite.created_at);
         }
     }
-    
+
     public class DiscordPage
     {
+        /// <summary> The name of this page. </summary>
         public string name { get; internal set; }
+        /// <summary> The url of this page. </summary>
         public string url { get; internal set; }
+        /// <summary> When is this page updated? </summary>
         public DateTime updatedAt { get; internal set; }
 
         internal string ID;
@@ -150,13 +169,18 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
+
     public class DiscordIncident
     {
+        /// <summary> The status of this incident. </summary>
         public string status { get; internal set; }
+        /// <summary> The content of this incident. </summary>
         public string body { get; internal set; }
+        /// <summary> When is this incident-information created? </summary>
         public DateTime createdAt { get; internal set; }
+        /// <summary> When is this incident-information updated? </summary>
         public DateTime updatedAt { get; internal set; }
+        /// <summary> When is this incident-information displayed? </summary>
         public DateTime displayedAt { get; internal set; }
 
         internal string ID;
@@ -193,19 +217,30 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
+
     public class DiscordMaintenance
     {
+        /// <summary> The name of this maintenance. </summary>
         public string name { get; internal set; }
+        /// <summary> The status of this maintenance. </summary>
         public string status { get; internal set; }
+        /// <summary> The link to this maintenance in the browser. </summary>
         public string link { get; internal set; }
+        /// <summary> The impact of this maintenance. </summary>
         public string impact { get; internal set; }
+        /// <summary> The collection of incidents of this maintenance. </summary>
         public DiscordIncident[] incidents { get; internal set; }
+        /// <summary> When is this maintenance-information created? </summary>
         public DateTime createdAt { get; internal set; }
+        /// <summary> When is this maintenance-information updated? </summary>
         public DateTime updatedAt { get; internal set; }
+        /// <summary> When will this maintenance be monitored? </summary>
         public DateTime monitoringAt { get; internal set; }
+        /// <summary> When is this maintenance resolved? </summary>
         public DateTime resolvedAt { get; internal set; }
+        /// <summary> When is this maintenance scheduled for? </summary>
         public DateTime scheduledFor { get; internal set; }
+        /// <summary> When is this maintenance scheduled until? </summary>
         public DateTime scheduledUntil { get; internal set; }
 
         internal string ID;
@@ -255,10 +290,12 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
+
     public class DiscordStatusPacket
     {
+        /// <summary> The page with information. </summary>
         public DiscordPage page { get; internal set; }
+        /// <summary> The collection of maintenances. </summary>
         public DiscordMaintenance[] maintenances { get; internal set; }
 
         internal DiscordStatusPacket(DiscordStatusPacketJSON e)
@@ -274,31 +311,35 @@ namespace DiscordUnity
             maintenances = maintenancesList.ToArray();
         }
     }
-    
+
     public class DiscordGame
     {
+        /// <summary> The name of the game this user is playing. </summary>
         public string name { get; internal set; }
     }
-    
+
     public class DiscordPresence
     {
-        public string status { get; internal set; }
+        /// <summary> The status of this user. </summary>
+        public MemberStatus status { get; internal set; }
+        /// <summary> The collections of roles this user has. </summary>
         public DiscordRole[] roles { get { return _roles.Values.ToArray(); } }
+        /// <summary> The name of the game this user is playing. </summary>
         public string game { get; internal set; }
 
         internal string serverID;
         internal Dictionary<string, DiscordRole> _roles;
 
-        internal DiscordPresence(DiscordUser user, DiscordPresenceJSON e)
+        internal DiscordPresence(DiscordClient parent, DiscordUser user, DiscordPresenceJSON e)
         {
             serverID = e.guild_id;
 
             if (!string.IsNullOrEmpty(e.status))
             {
-                status = e.status;
+                status = e.status == "online" ? MemberStatus.Online : e.status == "idle" ? MemberStatus.Idle : MemberStatus.Offline;
                 user.status = e.status == "online" ? MemberStatus.Online : e.status == "idle" ? MemberStatus.Idle : MemberStatus.Offline;
             }
-            
+
             if (e.game != null)
             {
                 user.game = e.game.name;
@@ -310,25 +351,43 @@ namespace DiscordUnity
             foreach (var role in e.roles)
             {
                 if (role.id == null) continue;
-                _roles.Add(role.id, new DiscordRole(role));
+                _roles.Add(role.id, new DiscordRole(parent, role, serverID));
             }
         }
     }
-    
+
     public class DiscordServer
     {
+        /// <summary> The collection of members this server has. </summary>
         public DiscordUser[] members { get { return _members.Values.ToArray(); } }
+        /// <summary> The collection of banned members this server has. </summary>
         public DiscordUser[] bannedMembers { get { return _members.Values.Where(x => x.isBanned).ToArray(); } }
-        public DiscordChannel[] channels { get { return _channels.Values.ToArray(); } }
+        /// <summary> The collection of channels this server has. </summary>
+        public DiscordTextChannel[] channels { get { return _channels.Values.ToArray(); } }
+        /// <summary> The collection of channels this server has. </summary>
+        public DiscordVoiceChannel[] voicechannels { get { return _voicechannels.Values.ToArray(); } }
+        /// <summary> The collection of private emojis this server has. </summary>
         public DiscordEmoji[] emojis { get { return _emojis.Values.ToArray(); } }
+        /// <summary> The collection of roles this server has. </summary>
         public DiscordRole[] roles { get { return _roles.Values.ToArray(); } }
+        /// <summary> The region of this server. </summary>
         public string region { get; internal set; }
+        /// <summary> The name of this server. </summary>
         public string name { get; internal set; }
+        /// <summary> When we joined this server. </summary>
         public DateTime joinedAt { get; internal set; }
+        /// <summary> The icon of this server. </summary>
         public Texture2D icon { get; internal set; }
+        /// <summary> The splash of this server. </summary>
         public Texture2D splash { get; internal set; }
+        /// <summary> The state of this server's icon. </summary>
         public TextureState iconState { get; internal set; }
+        /// <summary> The state of this server's splash. </summary>
         public TextureState splashState { get; internal set; }
+        /// <summary> The afk channel of this server. </summary>
+        public DiscordVoiceChannel afkchannel { get { return voicechannels.Where(x => x.ID == afkChannelID).FirstOrDefault(); } }
+        /// <summary> The embedded channel of this server. </summary>
+        public DiscordTextChannel embedchannel { get { return channels.Where(x => x.ID == embedChannelID).FirstOrDefault(); } }
 
         internal string ID;
         internal string iconID;
@@ -340,7 +399,8 @@ namespace DiscordUnity
         internal bool isEmbed;
         internal int verificationLevel;
         internal Dictionary<string, DiscordUser> _members;
-        internal Dictionary<string, DiscordChannel> _channels;
+        internal Dictionary<string, DiscordTextChannel> _channels;
+        internal Dictionary<string, DiscordVoiceChannel> _voicechannels;
         internal Dictionary<string, DiscordEmoji> _emojis;
         internal Dictionary<string, DiscordRole> _roles;
         internal DiscordClient client;
@@ -358,7 +418,7 @@ namespace DiscordUnity
             region = e.region;
             ownerID = e.owner_id;
             name = e.name;
-            if(!string.IsNullOrEmpty(e.joined_at)) joinedAt = DateTime.Parse(e.joined_at);
+            if (!string.IsNullOrEmpty(e.joined_at)) joinedAt = DateTime.Parse(e.joined_at);
 
             if (!string.IsNullOrEmpty(e.icon))
             {
@@ -383,7 +443,8 @@ namespace DiscordUnity
             }
 
             _members = new Dictionary<string, DiscordUser>();
-            _channels = new Dictionary<string, DiscordChannel>();
+            _channels = new Dictionary<string, DiscordTextChannel>();
+            _voicechannels = new Dictionary<string, DiscordVoiceChannel>();
             _emojis = new Dictionary<string, DiscordEmoji>();
             _roles = new Dictionary<string, DiscordRole>();
 
@@ -395,11 +456,14 @@ namespace DiscordUnity
                 }
             }
 
-            if (e.members != null)
+            if (e.channels != null)
             {
                 foreach (var channel in e.channels)
                 {
-                    _channels.Add(channel.id, new DiscordChannel(client, channel, ID));
+                    if (channel.type == "text")
+                        _channels.Add(channel.id, new DiscordTextChannel(client, channel, ID));
+                    else
+                        _voicechannels.Add(channel.id, new DiscordVoiceChannel(client, channel, ID));
                 }
             }
 
@@ -415,68 +479,105 @@ namespace DiscordUnity
             {
                 foreach (var role in e.roles)
                 {
-                    _roles.Add(role.id, new DiscordRole(role));
+                    _roles.Add(role.id, new DiscordRole(client, role, ID));
                 }
             }
         }
-        
-        public void CreateChannel(string channelname, DiscordChannelType type)
+
+        /// <summary> Reorders the roles. </summary>
+        /// <param name="roles">The roles in a specific order.</param>
+        public void ReorderRoles(DiscordRole[] roles, DiscordRolesCallback callback)
         {
-            client.CreateChannel(ID, channelname, type == DiscordChannelType.Text ? "text" : "voice");
+            client.ReorderRoles(ID, roles, callback);
         }
 
-        public void Edit(string servername, string region, int? verificationLevel, DiscordChannel afkchannel, int? timeout, Texture2D icon, Texture2D splash)
+        /// <summary> Creates a channel. </summary>
+        /// <param name="channelname">The name of the channel you want to create.</param>
+        /// <param name="type">The type of channel you want to create.</param>
+        public void CreateTextChannel(string channelname, DiscordChannelCallback callback)
         {
-            client.EditServer(ID, servername, null, region, verificationLevel, afkchannel == null ? null : afkchannel.ID, timeout, icon, splash);
+            client.CreateChannel(ID, channelname, "text", callback);
         }
 
-        public void ChangeOwner(DiscordUser newOwner)
+        /// <summary> Creates a channel. </summary>
+        /// <param name="channelname">The name of the channel you want to create.</param>
+        /// <param name="type">The type of channel you want to create.</param>
+        public void CreateVoiceChannel(string channelname, DiscordChannelCallback callback)
         {
-            client.EditServer(ID, null, newOwner.ID, null, null, null, null, null, null);
+            client.CreateChannel(ID, channelname, "voice", callback);
         }
 
-        public void Leave()
+        /// <summary> Edits this server. </summary>
+        /// <param name="servername">The servername of this server.</param>
+        /// <param name="region">The region of this server.</param>
+        /// <param name="verificationLevel">The verification level of this server.</param>
+        /// <param name="afkchannel">The afkchannel of this server.</param>
+        /// <param name="timeout">The afk timeout of this server.</param>
+        /// <param name="icon">The icon of this server.</param>
+        /// <param name="splash">The splash of this server.</param>
+        public void Edit(string servername, string region, int? verificationLevel, DiscordVoiceChannel afkchannel, int? timeout, Texture2D icon, Texture2D splash, DiscordServerCallback callback)
         {
-            client.LeaveServer(ID);
+            client.EditServer(ID, servername, null, region, verificationLevel, afkchannel == null ? null : afkchannel.ID, timeout, icon, splash, callback);
         }
 
-        public void Delete()
+        /// <summary> Changes the owner. </summary>
+        /// <param name="newOwner">The new owner for this server.</param>
+        public void ChangeOwner(DiscordUser newOwner, DiscordServerCallback callback)
+        {
+            client.EditServer(ID, null, newOwner.ID, null, null, null, null, null, null, callback);
+        }
+
+        /// <summary> Leaves this server. </summary>
+        public void Leave(DiscordServerCallback callback)
+        {
+            client.LeaveServer(ID, callback);
+        }
+
+        /// <summary> Deletes this server if you're the owner. </summary>
+        public void Delete(DiscordServerCallback callback)
         {
             if (client.isBot) return;
-            client.DeleteServer(ID);
+            client.DeleteServer(ID, callback);
         }
 
-        public void CreateRole()
+        /// <summary> Creates a new role. </summary>
+        public void CreateRole(DiscordRoleCallback callback)
         {
-            client.CreateRole(ID);
+            client.CreateRole(ID, callback);
         }
 
-        public void EditRole(DiscordRole role, Color color, bool hoist, string name, DiscordPermission[] permissions)
+        /// <summary> Gets the invites. </summary>
+        public void GetInvites(DiscordInvitesCallback callback)
         {
-            client.EditRole(ID, role.ID, Utils.GetIntFromColor(color), hoist, name, permissions);
+            client.GetServerInvites(ID, callback);
         }
 
-        public void ReorderRoles(DiscordRole[] roles)
-        {
-            client.ReorderRoles(ID, roles);
-        }
-
-        public void DeleteRole(DiscordRole role)
-        {
-            client.DeleteRole(ID, role.ID);
-        }
-
-        public void GetInvites()
-        {
-            client.GetServerInvites(ID);
-        }
-
-        public void GetOfflineMembers(string filter, int limit)
+        /// <summary> Gets offline members. </summary>
+        public void GetOfflineMembers(string filter, int limit, DiscordUsersCallback callback)
         {
             client.GetOfflineServerMembers(ID, filter, limit);
         }
 
-        public IEnumerator GetIcon()
+        /// <summary> Kicks the member from the server. </summary>
+        public void KickMember(DiscordUser member, DiscordUserCallback callback)
+        {
+            client.KickMember(ID, member.ID, callback);
+        }
+
+        /// <summary> Bans the member from the server. </summary>
+        public void BanMember(DiscordUser member, int clearPreviousDays, DiscordCallback callback)
+        {
+            client.AddBan(ID, member.ID, clearPreviousDays, callback);
+        }
+
+        /// <summary> Unbans the member from the server. </summary>
+        public void UnBanMember(DiscordUser member, DiscordCallback callback)
+        {
+            client.RemoveBan(ID, member.ID, callback);
+        }
+
+        /// <summary> Loads the icon for this server. </summary>
+        public IEnumerator LoadIcon(DiscordTextureCallback callback)
         {
             if (iconState == TextureState.Unloaded)
             {
@@ -496,7 +597,8 @@ namespace DiscordUnity
             }
         }
 
-        public IEnumerator GetSplash()
+        /// <summary> Loads the splash for this server. </summary>
+        public IEnumerator LoadSplash(DiscordTextureCallback callback)
         {
             if (splashState == TextureState.Unloaded)
             {
@@ -536,27 +638,56 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
+
     public class DiscordRole
     {
+        /// <summary> The name of this role. </summary>
         public string name { get; internal set; }
+        /// <summary> Is this role hoisted?. </summary>
         public bool hoist { get; internal set; }
+        /// <summary> Is this role managed? </summary>
         public bool managed { get; internal set; }
+        /// <summary> The color of this role. </summary>
         public Color color { get; internal set; }
+        /// <summary> The collection of permissions for this role. </summary>
         public DiscordPermission[] permissions { get; internal set; }
+        /// <summary> The server this role is created in. </summary>
+        public DiscordServer server { get { return client._servers[serverID]; } }
+        /// <summary> The position of this role. </summary>
+        public int position { get { return pos; } }
 
         internal string ID;
+        internal string serverID;
         internal int pos;
+        internal DiscordClient client;
 
-        internal DiscordRole(DiscordRoleJSON role)
+        internal DiscordRole(DiscordClient parent, DiscordRoleJSON role, string serverid)
         {
             ID = role.id;
+            client = parent;
+            serverID = serverid;
             hoist = role.hoist;
             managed = role.managed;
             name = role.name;
             pos = role.position;
             color = Utils.GetColorFromInt(role.color);
             permissions = Utils.GetPermissions(role.permissions);
+        }
+
+        /// <summary> Edits the role. </summary>
+        /// <param name="color">The color of this server.</param>
+        /// <param name="hoist">Whether this should be hoisted.</param>
+        /// <param name="name">The name of this role.</param>
+        /// <param name="permissions">The permissions for this role.</param>
+        public void EditRole(Color color, bool hoist, string name, DiscordPermission[] permissions, DiscordRoleCallback callback)
+        {
+            client.EditRole(serverID, ID, Utils.GetIntFromColor(color), hoist, name, permissions, callback);
+        }
+
+        /// <summary> Deletes this role if you have the permission. </summary>
+        public void DeleteRole(DiscordRoleCallback callback)
+        {
+            client.DeleteRole(serverID, ID, callback);
         }
 
         public override bool Equals(object o)
@@ -579,11 +710,14 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
+
     public class DiscordEmoji
     {
+        /// <summary> The name of this emoji. </summary>
         public string name { get; internal set; }
+        /// <summary> The texture of this emoji. </summary>
         public Texture2D emoji { get; internal set; }
+        /// <summary> The state of this emoji's texture. </summary>
         public TextureState emojiState { get; internal set; }
 
         internal string ID;
@@ -595,7 +729,7 @@ namespace DiscordUnity
             emojiState = TextureState.Unloaded;
         }
 
-        public IEnumerator GetEmoji()
+        public IEnumerator GetEmoji(DiscordTextureCallback callback)
         {
             if (emojiState == TextureState.Unloaded)
             {
@@ -639,19 +773,33 @@ namespace DiscordUnity
 
     public class DiscordUser
     {
+        /// <summary> The name of this user. </summary>
         public string name { get; internal set; }
+        /// <summary> Is this user's email verified? </summary>
         public bool verifiedEmail { get; internal set; }
+        /// <summary> The email of this user. </summary>
         public string email { get; internal set; }
+        /// <summary> The avatar of this user. </summary>
         public Texture2D avatar { get; internal set; }
+        /// <summary> The state of this user's avatar. </summary>
         public TextureState avatarState { get; internal set; }
 
+        /// <summary> Is this member muted? </summary>
         public bool muted { get; internal set; }
+        /// <summary> Is this member deaf? </summary>
         public bool deaf { get; internal set; }
+        /// <summary> Is this member typing? </summary>
         public bool isTyping { get; internal set; }
+        /// <summary> Is this member banned in this server? </summary>
         public bool isBanned { get; internal set; }
+        /// <summary> When did this member join this server. </summary>
         public DateTime joinedAt { get; internal set; }
+        /// <summary> The name of the game this member is playing. </summary>
         public string game { get; internal set; }
+        /// <summary> The status of this member. </summary>
         public MemberStatus status { get; internal set; }
+        /// <summary> The server this member is in </summary>
+        public DiscordServer server { get { return client._servers[serverID]; } }
 
         internal string ID;
         internal string avatarID;
@@ -689,7 +837,7 @@ namespace DiscordUnity
             client = parent;
             name = profile.username;
             verifiedEmail = profile.verified;
-            if(profile.verified) email = profile.email;
+            if (profile.verified) email = profile.email;
 
             if (profile.avatar != null)
             {
@@ -726,7 +874,8 @@ namespace DiscordUnity
             if (!string.IsNullOrEmpty(member.joined_at)) joinedAt = DateTime.Parse(member.joined_at);
         }
 
-        public IEnumerator GetAvatar()
+        /// <summary> Loads the avatar of this user. </summary>
+        public IEnumerator GetAvatar(DiscordTextureCallback callback)
         {
             if (avatarState == TextureState.Unloaded)
             {
@@ -746,27 +895,18 @@ namespace DiscordUnity
             }
         }
 
-        public void Edit(string nick, DiscordRole[] roles, bool? mute, bool? deaf, string channelID)
+        /// <summary> Edits this user. </summary>
+        /// <param name="nick">The nick of this user.</param>
+        /// <param name="roles">The roles of this user.</param>
+        /// <param name="mute">Whether this user should be muted.</param>
+        /// <param name="deaf">Whether this user should be deaf.</param>
+        /// <param name="channel">The channel of this user.</param>
+        public void Edit(string nick, DiscordRole[] roles, bool? mute, bool? deaf, DiscordChannel channel, DiscordUserCallback callback)
         {
-            EditMemberArgs args = new EditMemberArgs() { nick = nick, roles = Utils.GetRoleIDs(roles), channel_id = channelID };
+            EditMemberArgs args = new EditMemberArgs() { nick = nick, roles = Utils.GetRoleIDs(roles), channel_id = channel.ID };
             if (mute != null) args.mute = mute.Value;
             if (deaf != null) args.deaf = deaf.Value;
-            client.EditMember(serverID, ID, args);
-        }
-
-        public void Kick()
-        {
-            client.KickMember(serverID, ID);
-        }
-
-        public void Ban(int clearPreviousDays)
-        {
-            client.AddBan(serverID, ID, clearPreviousDays);
-        }
-
-        public void UnBan()
-        {
-            client.RemoveBan(serverID, ID);
+            client.EditMember(serverID, ID, args, callback);
         }
 
         public override bool Equals(object o)
@@ -789,43 +929,65 @@ namespace DiscordUnity
             return a.ID == b.ID;
         }
     }
-    
+
     public class DiscordProvider
     {
+        /// <summary> The name of this provider. </summary>
         public string name { get; internal set; }
+        /// <summary> The url of this provider. </summary>
         public string url { get; internal set; }
     }
-    
+
     public class DiscordThumbnail
     {
+        /// <summary> The url of this thumbnail. </summary>
         public string url { get; internal set; }
+        /// <summary> The poxy_url of this thumbnail. </summary>
         public string poxy_url { get; internal set; }
+        /// <summary> The height of this thumbnail. </summary>
         public int height { get; internal set; }
+        /// <summary> The width of this thumbnail. </summary>
         public int width { get; internal set; }
     }
-    
+
     public class DiscordEmbed
     {
+        /// <summary> The title of this embed. </summary>
         public string title { get; internal set; }
+        /// <summary> The type of this embed. </summary>
         public string type { get; internal set; }
+        /// <summary> The description of this embed. </summary>
         public string description { get; internal set; }
+        /// <summary> The url of this embed. </summary>
         public string url { get; internal set; }
+        /// <summary> The thumbnail of this embed. </summary>
         public DiscordThumbnail thumbnail { get; internal set; }
+        /// <summary> The provider of this embed. </summary>
         public DiscordProvider provider { get; internal set; }
     }
-    
+
     public class DiscordMessage
     {
+        /// <summary> The author of this message. </summary>
         public DiscordUser author { get; internal set; }
+        /// <summary> The content of this message. </summary>
         public string content { get; internal set; }
-        public List<DiscordUser> mentions { get; internal set; }
-        public List<DiscordEmbed> embeds { get; internal set; }
+        /// <summary> The collection this message has. </summary>
+        public DiscordUser[] mentions { get { return _mentions.ToArray(); } }
+        /// <summary> The collection of embeds this message has. </summary>
+        public DiscordEmbed[] embeds { get { return _embeds.ToArray(); } }
+        /// <summary> When is this message created? </summary>
         public DateTime createdAt { get; internal set; }
+        /// <summary> When is this message edited? </summary>
         public DateTime editedAt { get; internal set; }
+        /// <summary> The channel this message is created in. </summary>
+        public DiscordTextChannel channel { get { return client._channels[channelID]; } }
 
         internal string ID;
         internal string channelID;
         internal DiscordClient client;
+        internal List<DiscordUser> _mentions;
+        internal List<DiscordEmbed> _embeds;
 
         internal DiscordMessage(DiscordClient parent, DiscordMessageJSON e)
         {
@@ -834,9 +996,9 @@ namespace DiscordUnity
             channelID = e.channel_id;
             author = new DiscordUser(client, e.author);
             content = e.content;
-            mentions = new List<DiscordUser>();
-            if (e.embeds != null) embeds = new List<DiscordEmbed>(e.embeds);
-            else embeds = new List<DiscordEmbed>();
+            _mentions = new List<DiscordUser>();
+            if (e.embeds != null) _embeds = new List<DiscordEmbed>(e.embeds);
+            else _embeds = new List<DiscordEmbed>();
             if (!string.IsNullOrEmpty(e.timestamp)) createdAt = DateTime.Parse(e.timestamp);
             else createdAt = DateTime.Now;
             if (!string.IsNullOrEmpty(e.edited_timestamp)) editedAt = DateTime.Parse(e.edited_timestamp);
@@ -846,24 +1008,28 @@ namespace DiscordUnity
             {
                 foreach (var mention in e.mentions)
                 {
-                    mentions.Add(new DiscordUser(client, mention));
+                    _mentions.Add(new DiscordUser(client, mention));
                 }
             }
         }
 
-        public void Edit(string content)
+        /// <summary> Edits this message. </summary>
+        /// <param name="content">The content of this message.</param>
+        public void Edit(string content, DiscordMessageCallback callback)
         {
-            client.EditMessage(channelID, ID, content);
+            client.EditMessage(channelID, ID, content, callback);
         }
 
-        public void Delete()
+        /// <summary> Deletes this message. </summary>
+        public void Delete(DiscordMessageCallback callback)
         {
-            client.DeleteMessage(channelID, ID);
+            client.DeleteMessage(channelID, ID, callback);
         }
 
-        public void Acknowledge()
+        /// <summary> Sets this message as read. </summary>
+        public void Acknowledge(DiscordMessageCallback callback)
         {
-            client.AcknowledgeMessage(channelID, ID);
+            client.AcknowledgeMessage(channelID, ID, callback);
         }
 
         public override bool Equals(object o)
@@ -886,52 +1052,14 @@ namespace DiscordUnity
             return a.ID != b.ID;
         }
     }
-    
-    public class DiscordChannelBase
+
+    public class DiscordChannel
     {
+        public int position { get { return pos; } }
+
         internal string ID;
         internal int pos;
         internal DiscordClient client;
-
-        public void Edit(string channelname, string topic)
-        {
-            client.EditChannel(ID, channelname, topic, pos);
-        }
-
-        public void Edit(string channelname, string topic, int position)
-        {
-            client.EditChannel(ID, channelname, topic, position);
-        }
-
-        public void Delete()
-        {
-            client.DeleteChannel(ID);
-        }
-        
-        public void BroadcastTyping()
-        {
-            client.BroadcastTyping(ID);
-        }
-
-        public void GetMessages(int limit)
-        {
-            client.GetMessages(ID, limit);
-        }
-
-        public void GetMessages(int limit, DiscordMessage message, bool before)
-        {
-            client.GetMessages(ID, limit, message.ID, before);
-        }
-
-        public void SendMessage(string content, bool textToSpeech)
-        {
-            client.SendMessage(ID, content, 0, textToSpeech);
-        }
-        
-        public void SendFile(string filePath)
-        {
-            client.SendFile(ID, filePath);
-        }
 
         public override bool Equals(object o)
         {
@@ -943,92 +1071,262 @@ namespace DiscordUnity
             return base.GetHashCode();
         }
 
-        public static bool operator ==(DiscordChannelBase a, DiscordChannelBase b)
+        public static bool operator ==(DiscordChannel a, DiscordChannel b)
         {
             return a.ID == b.ID;
         }
 
-        public static bool operator !=(DiscordChannelBase a, DiscordChannelBase b)
+        public static bool operator !=(DiscordChannel a, DiscordChannel b)
         {
             return a.ID != b.ID;
         }
     }
     
-    public class DiscordChannel : DiscordChannelBase
+    public class DiscordTextChannelBase : DiscordChannel
     {
+        /// <summary> Deletes this channel. </summary>
+        public void Delete(DiscordChannelCallback callback)
+        {
+            client.DeleteChannel(ID, callback);
+        }
+
+        /// <summary> Broadcasts for when you start typing. </summary>
+        public void BroadcastTyping(DiscordCallback callback)
+        {
+            client.BroadcastTyping(ID, callback);
+        }
+
+        /// <summary> Gets the messages in this channel. </summary>
+        /// <param name="limit">The limit of the amount of messages.</param>
+        public void GetMessages(int limit, DiscordMessagesCallback callback)
+        {
+            client.GetMessages(ID, limit, callback);
+        }
+
+        /// <summary> Gets the messages in this channel. </summary>
+        /// <param name="limit">The limit of the amount of messages.</param>
+        /// <param name="message">A message to focus on.</param>
+        /// <param name="before">Whether we should get all the message before or after the message that is focused.</param>
+        public void GetMessages(int limit, DiscordMessage message, bool before, DiscordMessagesCallback callback)
+        {
+            client.GetMessages(ID, limit, message.ID, before, callback);
+        }
+
+        /// <summary> Sends a message to this channel. </summary>
+        /// <param name="content">The content of this message.</param>
+        /// <param name="textToSpeech">Whether this message should be used by text to speech.</param>
+        public void SendMessage(string content, bool textToSpeech, DiscordMessageCallback callback)
+        {
+            client.SendMessage(ID, content, 0, textToSpeech, callback);
+        }
+
+        /// <summary> Sends a file to this channel. </summary>
+        /// <param name="filePath">The path of this file.</param>
+        public void SendFile(string filePath, DiscordCallback callback)
+        {
+            client.SendFile(ID, filePath, callback);
+        }
+    }
+    
+    public class DiscordTextChannel : DiscordTextChannelBase
+    {
+        /// <summary> The name of this channel. </summary>
         public string name { get; internal set; }
-        public DiscordChannelType type { get; internal set; }
+        /// <summary> The server where this channel is created in. </summary>
+        public DiscordServer server { get { return client._servers[serverID]; } }
 
         internal string serverID;
         internal string lastMessageID;
         internal int bitrate = -1;
 
-        internal DiscordChannel(DiscordClient parent, DiscordChannelJSON e)
+        internal DiscordTextChannel(DiscordClient parent, DiscordChannelJSON e)
         {
             ID = e.id;
             client = parent;
             serverID = e.guild_id;
             name = e.name;
             pos = e.position;
-            type = e.type == "text" ? DiscordChannelType.Text : DiscordChannelType.Voice;
-            bitrate = type == DiscordChannelType.Voice ? e.bitrate : -1;
             if (e.last_message_id != null) lastMessageID = e.last_message_id;
         }
 
-        internal DiscordChannel(DiscordClient parent, DiscordChannelJSON e, string guild_id)
+        internal DiscordTextChannel(DiscordClient parent, DiscordChannelJSON e, string guild_id)
         {
             ID = e.id;
             client = parent;
             serverID = guild_id;
             name = e.name;
             pos = e.position;
-            type = e.type == "text" ? DiscordChannelType.Text : DiscordChannelType.Voice;
             if (e.last_message_id != null) lastMessageID = e.last_message_id;
         }
 
-        public void CreateInvite(int maxAge = 86400, int maxUses = 0, bool temporary = false, bool xkcdpass = false)
+        /// <summary> Edits this channel. </summary>
+        /// <param name="channelname">The name of this channel.</param>
+        /// <param name="topic">The topic of this channel.</param>
+        /// <param name="bitrate">The bitrate for this channel.(between 8000 to 96000)</param>
+        /// <param name="limit">The max amount of users for this channel.</param>
+        public void Edit(string channelname, string topic, DiscordTextChannelCallback callback)
         {
-            client.CreateInvite(ID, maxAge, maxUses, temporary, xkcdpass);
+            Edit(channelname, topic, pos, callback);
         }
 
-        public void GetInvites()
+        /// <summary> Edits this channel. </summary>
+        /// <param name="channelname">The name of this channel.</param>
+        /// <param name="topic">The topic of this channel.</param>
+        /// <param name="position">The position of this channel.</param>
+        /// <param name="bitrate">The bitrate for this channel.(between 8000 to 96000)</param>
+        /// <param name="limit">The max amount of users for this channel.</param>
+        public void Edit(string channelname, string topic, int position, DiscordTextChannelCallback callback)
         {
-            client.GetServerInvites(ID);
+            client.EditChannel(ID, channelname, topic, position, callback);
         }
 
-        public void CreatePermission(DiscordUser user, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        /// <summary> Creates an invite for this channel. </summary>
+        /// <param name="maxAge">The age for this invite.</param>
+        /// <param name="maxUses">The maximun amount of uses for this invite.</param>
+        /// <param name="temporary">Whether this invite is temporary.</param>
+        /// <param name="xkcdpass">The this invite should be in the form of a pass.</param>
+        public void CreateInvite(int maxAge = 86400, int maxUses = 0, bool temporary = false, bool xkcdpass = false, DiscordInviteCallback callback = null)
         {
-            client.CreateOrEditPermission(ID, user.ID, allowed, denied, type);
+            client.CreateInvite(ID, maxAge, maxUses, temporary, xkcdpass, callback);
         }
 
-        public void CreatePermission(DiscordRole role, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        /// <summary> Gets the invites for this channel. </summary>
+        public void GetInvites(DiscordInvitesCallback callback)
         {
-            client.CreateOrEditPermission(ID, role.ID, allowed, denied, type);
+            client.GetServerInvites(ID, callback);
         }
 
-        public void EditPermission(DiscordUser user, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        /// <summary> Creates or edits custom permissions for a user. </summary>
+        /// <param name="user">The user.</param>
+        /// <param name="allowed">What this user is allowed to do.</param>
+        /// <param name="denied">What this user is denied to do.</param>
+        public void CreateEditPermission(DiscordUser user, DiscordPermission[] allowed, DiscordPermission[] denied, DiscordUserCallback callback)
         {
-            client.CreateOrEditPermission(ID, user.ID, allowed, denied, type);
+            client.CreateOrEditPermissionUser(ID, user.ID, allowed, denied, callback);
         }
 
-        public void EditPermission(DiscordRole role, DiscordPermission[] allowed, DiscordPermission[] denied, TargetType type)
+        /// <summary> Creates or edits custom permissions for a role. </summary>
+        /// <param name="role">The role.</param>
+        /// <param name="allowed">What this role is allowed to do.</param>
+        /// <param name="denied">What this role is denied to do.</param>
+        public void CreateEditPermission(DiscordRole role, DiscordPermission[] allowed, DiscordPermission[] denied, DiscordRoleCallback callback)
         {
-            client.CreateOrEditPermission(ID, role.ID, allowed, denied, type);
+            client.CreateOrEditPermissionRole(ID, role.ID, allowed, denied, callback);
         }
 
-        public void DeletePermission(DiscordUser user)
+        /// <summary> Deletes the custom permissions of a user. </summary>
+        public void DeletePermission(DiscordUser user, DiscordCallback callback)
         {
-            client.DeletePermission(ID, user.ID);
+            client.DeletePermission(ID, user.ID, callback);
         }
 
-        public void DeletePermission(DiscordRole role)
+        /// <summary> Deletes the custom permissions of a role. </summary>
+        public void DeletePermission(DiscordRole role, DiscordCallback callback)
         {
-            client.DeletePermission(ID, role.ID);
+            client.DeletePermission(ID, role.ID, callback);
         }
     }
-    
-    public class DiscordPrivateChannel : DiscordChannelBase
+
+    public class DiscordVoiceChannel : DiscordChannel
     {
+        /// <summary> The name of this channel. </summary>
+        public string name { get; internal set; }
+        /// <summary> The server where this channel is created in. </summary>
+        public DiscordServer server { get { return client._servers[serverID]; } }
+
+        internal string serverID;
+        internal string lastMessageID;
+        internal int bitrate = -1;
+
+        internal DiscordVoiceChannel(DiscordClient parent, DiscordChannelJSON e)
+        {
+            ID = e.id;
+            client = parent;
+            serverID = e.guild_id;
+            name = e.name;
+            pos = e.position;
+        }
+
+        internal DiscordVoiceChannel(DiscordClient parent, DiscordChannelJSON e, string guild_id)
+        {
+            ID = e.id;
+            client = parent;
+            serverID = guild_id;
+            name = e.name;
+            pos = e.position;
+        }
+
+        /// <summary> Edits this channel. </summary>
+        /// <param name="channelname">The name of this channel.</param>
+        /// <param name="topic">The topic of this channel.</param>
+        /// <param name="bitrate">The bitrate for this channel.(between 8000 to 96000)</param>
+        /// <param name="limit">The max amount of users for this channel.</param>
+        public void Edit(string channelname, int bitrate, int limit, DiscordVoiceChannelCallback callback)
+        {
+            Edit(channelname, pos, bitrate, limit, callback);
+        }
+
+        /// <summary> Edits this channel. </summary>
+        /// <param name="channelname">The name of this channel.</param>
+        /// <param name="topic">The topic of this channel.</param>
+        /// <param name="position">The position of this channel.</param>
+        /// <param name="bitrate">The bitrate for this channel.(between 8000 to 96000)</param>
+        /// <param name="limit">The max amount of users for this channel.</param>
+        public void Edit(string channelname, int position, int bitrate, int limit, DiscordVoiceChannelCallback callback)
+        {
+            client.EditVoiceChannel(ID, channelname, position, bitrate, limit, callback);
+        }
+
+        /// <summary> Creates an invite for this channel. </summary>
+        /// <param name="maxAge">The age for this invite.</param>
+        /// <param name="maxUses">The maximun amount of uses for this invite.</param>
+        /// <param name="temporary">Whether this invite is temporary.</param>
+        /// <param name="xkcdpass">The this invite should be in the form of a pass.</param>
+        public void CreateInvite(int maxAge = 86400, int maxUses = 0, bool temporary = false, bool xkcdpass = false, DiscordInviteCallback callback = null)
+        {
+            client.CreateInvite(ID, maxAge, maxUses, temporary, xkcdpass, callback);
+        }
+
+        /// <summary> Gets the invites for this channel. </summary>
+        public void GetInvites(DiscordInvitesCallback callback)
+        {
+            client.GetServerInvites(ID, callback);
+        }
+
+        /// <summary> Creates or edits custom permissions for a user. </summary>
+        /// <param name="user">The user.</param>
+        /// <param name="allowed">What this user is allowed to do.</param>
+        /// <param name="denied">What this user is denied to do.</param>
+        public void CreateEditPermission(DiscordUser user, DiscordPermission[] allowed, DiscordPermission[] denied, DiscordUserCallback callback)
+        {
+            client.CreateOrEditPermissionUser(ID, user.ID, allowed, denied, callback);
+        }
+
+        /// <summary> Creates or edits custom permissions for a role. </summary>
+        /// <param name="role">The role.</param>
+        /// <param name="allowed">What this role is allowed to do.</param>
+        /// <param name="denied">What this role is denied to do.</param>
+        public void CreateEditPermission(DiscordRole role, DiscordPermission[] allowed, DiscordPermission[] denied, DiscordRoleCallback callback)
+        {
+            client.CreateOrEditPermissionRole(ID, role.ID, allowed, denied, callback);
+        }
+
+        /// <summary> Deletes the custom permissions of a user. </summary>
+        public void DeletePermission(DiscordUser user, DiscordCallback callback)
+        {
+            client.DeletePermission(ID, user.ID, callback);
+        }
+
+        /// <summary> Deletes the custom permissions of a role. </summary>
+        public void DeletePermission(DiscordRole role, DiscordCallback callback)
+        {
+            client.DeletePermission(ID, role.ID, callback);
+        }
+    }
+
+    public class DiscordPrivateChannel : DiscordTextChannelBase
+    {
+        /// <summary> The recipient of this private channel. </summary>
         public DiscordUser recipient { get; internal set; }
 
         internal string lastMessageID;

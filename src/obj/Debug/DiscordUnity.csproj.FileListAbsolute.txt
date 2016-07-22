@@ -1,4 +1,0 @@
-D:\Documents\Desktop\OtherProjects\DiscordProject\Assets\Plugins\DiscordUnity.dll
-D:\Documents\Desktop\OtherProjects\DiscordUnity\obj\Debug\DiscordUnity.dll
-D:\Documents\Desktop\OtherProjects\DiscordUnity\obj\Debug\DiscordUnity.csprojResolveAssemblyReference.cache
-D:\Documents\Desktop\OtherProjects\DiscordProject\Assets\Plugins\DiscordUnity.XML

@@ -25,15 +25,13 @@ namespace DiscordUnity
 
     public delegate void DiscordUsersCallback(DiscordClient client, DiscordUser[] users, DiscordError error);
 
+    public delegate void DiscordBansCallback(DiscordClient client, DiscordBan[] users, DiscordError error);
+
     public delegate void DiscordRegionsCallback(DiscordClient client, DiscordRegion[] regions, DiscordError error);
 
     public delegate void DiscordServerCallback(DiscordClient client, DiscordServer server, DiscordError error);
 
     public delegate void DiscordServersCallback(DiscordClient client, DiscordServer[] servers, DiscordError error);
-
-    public delegate void DiscordChannelCallback(DiscordClient client, DiscordChannel channel, DiscordError error);
-
-    public delegate void DiscordChannelsCallback(DiscordClient client, DiscordChannel[] channels, DiscordError error);
 
     public delegate void DiscordTextChannelCallback(DiscordClient client, DiscordTextChannel channel, DiscordError error);
 

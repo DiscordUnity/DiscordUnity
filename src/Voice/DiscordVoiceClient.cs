@@ -22,6 +22,7 @@ namespace DiscordUnity
         internal int port;
         internal string sessionID;
         internal uint ssrc;
+        internal DiscordVoiceCallback startcallback;
 
         /// <summary> SenderObject is the voiceclient. </summary>
         public EventHandler<DiscordMemberArgs> OnVoiceState = delegate { };
@@ -52,10 +53,11 @@ namespace DiscordUnity
         private OpusEncoder encoder;
         private OpusDecoder decoder;
 
-        internal DiscordVoiceClient(DiscordClient pclient, DiscordVoiceChannel pchannel)
+        internal DiscordVoiceClient(DiscordClient pclient, DiscordVoiceChannel pchannel, DiscordVoiceCallback callback)
         {
             parent = pclient;
             channel = pchannel;
+            startcallback = callback;
             users = new Dictionary<DiscordUser, uint>();
 
             try
@@ -150,7 +152,7 @@ namespace DiscordUnity
         }
 
         /// <summary> Stops this voiceclient. </summary>
-        public void Stop()
+        public void Stop(DiscordVoiceCallback callback)
         {
             PayloadArgs<VoiceDisconnectArgs> args = new PayloadArgs<VoiceDisconnectArgs>()
             {
@@ -165,7 +167,8 @@ namespace DiscordUnity
             };
 
             parent.socket.Send(JsonUtility.ToJson(args));
-            socket.Close();
+            parent.unityInvoker.Enqueue(() => callback(parent, this, new DiscordError()));
+            socket.CloseAsync();
             parent.voiceClients.Remove(channel.serverID);
         }
 
@@ -174,7 +177,7 @@ namespace DiscordUnity
         {
             if (isOnline)
             {
-                socket.Close();
+                socket.CloseAsync();
                 return;
             }
 
@@ -193,7 +196,6 @@ namespace DiscordUnity
             sendThread = null;
             socket = null;
             client = null;
-            parent.unityInvoker.Enqueue(() => parent.OnVoiceClientClosed(parent, new DiscordVoiceClientArgs() { client = parent, voiceClient = this }));
         }
 
         private bool _speaking;
@@ -292,7 +294,7 @@ namespace DiscordUnity
                     udpThread = new Thread(UDPKeepAlive);
                     udpThread.Start();
                     isOnline = true;
-                    parent.unityInvoker.Enqueue(() => parent.OnVoiceClientOpened(parent, new DiscordVoiceClientArgs() { client = parent, voiceClient = this }));
+                    parent.unityInvoker.Enqueue(() => startcallback(parent, this, new DiscordError()));
 
                     sendThread = new Thread(SendVoiceLoop);
                     receiveThread = new Thread(ReceiveVoiceLoop);
@@ -351,7 +353,8 @@ namespace DiscordUnity
 
             catch (Exception e)
             {
-                Debug.LogError(e);
+                Debug.LogError("SendLoop: " + e);
+                return;
             }
         }
 
@@ -419,19 +422,18 @@ namespace DiscordUnity
 
         private void ReceiveVoiceLoop()
         {
-            while (isOnline)
+            try
             {
-                try
+                while (isOnline)
                 {
                     ReceiveVoice();
                 }
+            }
 
-                catch (Exception e)
-                {
-                    Debug.LogError("Error in receiving: " + e.Message);
-                    Debug.LogError("Error in receiving: " + e.Source);
-                    Debug.LogError("Error in receiving: " + e.StackTrace);
-                }
+            catch (Exception e)
+            {
+                Debug.LogError("ReceiveLoop: " + e);
+                return;
             }
         }
 
@@ -511,7 +513,8 @@ namespace DiscordUnity
 
             catch (Exception e)
             {
-                Debug.LogError(e);
+                Debug.LogError("Voice KeepAlive: " + e);
+                return;
             }
         }
 
@@ -537,7 +540,8 @@ namespace DiscordUnity
 
             catch (Exception e)
             {
-                Debug.LogError(e);
+                Debug.LogError("UDP KeepAlive: " + e);
+                return;
             }
         }
 

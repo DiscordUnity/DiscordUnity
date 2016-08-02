@@ -14,6 +14,8 @@ namespace DiscordUnity
         #region Fields
         /// <summary> Is this client online? </summary>
         public bool isOnline { get; internal set; }
+        /// <summary> Is this client online? </summary>
+        public bool isUpdatable { get; internal set; }
         /// <summary> Is this client a bot? </summary>
         public bool isBot { get; internal set; }
         /// <summary> Is this client blocked because of sendrate limit? </summary>
@@ -63,6 +65,12 @@ namespace DiscordUnity
 
                 return channelList;
             }
+        }
+
+        public DiscordClient()
+        {
+            isOnline = false;
+            isUpdatable = false;
         }
 
         /// <summary> The private channels of this user. </summary>
@@ -438,8 +446,11 @@ namespace DiscordUnity
         public void Start(string email, string password, DiscordCallback callback)
         {
             if (isOnline) return;
+            isBot = false;
             logincallback = callback;
             LoginArgs login = new LoginArgs() { email = email, password = password };
+            unityInvoker = new Queue<Action>();
+            isUpdatable = true;
             Call(HttpMethod.Post, "https://discordapp.com/api/auth/login", OnStart, (result) => { unityInvoker.Enqueue(() => logincallback(this, null, new DiscordError(result))); }, JsonUtility.ToJson(login));
         }
 
@@ -450,6 +461,9 @@ namespace DiscordUnity
             if (isOnline) return;
             logincallback = callback;
             token = botToken;
+            isBot = true;
+            unityInvoker = new Queue<Action>();
+            isUpdatable = true;
             StartEventListener();
         }
 
@@ -695,9 +709,6 @@ namespace DiscordUnity
 
         private void StartEventListener()
         {
-            isOnline = false;
-            isBot = false;
-            unityInvoker = new Queue<Action>();
             voiceClients = new Dictionary<string, DiscordVoiceClient>();
             GetGatewayUrl();
         }
@@ -964,7 +975,7 @@ namespace DiscordUnity
                     case HttpMethod.Post:
                         httpRequest.Method = "POST";
                         if (content == null) httpRequest.BeginGetResponse(new AsyncCallback(OnGetResponse), new RequestState() { method = method, result = result, error = error, request = httpRequest });
-                        else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, request = httpRequest });
+                        else httpRequest.BeginGetRequestStream(new AsyncCallback(OnRequestStream), new RequestStateJSON() { method = method, content = content, result = result, error = error, request = httpRequest });
                         break;
 
                     case HttpMethod.Get:

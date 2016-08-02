@@ -136,7 +136,7 @@ public class DiscordVoiceExample : MonoBehaviour
             Microphone.End("Microphone (3- Logitech USB Headset)");
         }
 
-        if (client != null)
+        if (client.isUpdatable)
         {
             client.Update();
         }
@@ -185,6 +185,7 @@ public class DiscordVoiceExample : MonoBehaviour
         if (error.failed)
         {
             Debug.LogError("Start failed: " + error.message);
+            return;
         }
 
         Debug.Log("Client started.");

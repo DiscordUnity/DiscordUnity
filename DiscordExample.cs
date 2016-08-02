@@ -87,7 +87,7 @@ public class DiscordExample : MonoBehaviour
 
     void Update()
     {
-        if (client.isOnline)
+        if (client.isUpdatable)
         {
             client.Update();
         }

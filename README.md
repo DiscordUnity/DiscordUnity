@@ -1,6 +1,6 @@
 # DiscordUnity
 A DiscordAPI made for Unity and only usable for Unity. It contains special features to make it all work.
-This library only works below unity version 5.4!
+This library only works below unity version 5.3.5!
 
 ### INSTALLATION
 - Open the UnityProject where you want DiscordUnity.

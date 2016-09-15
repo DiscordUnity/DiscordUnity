@@ -1,0 +1,7 @@
+- Fix voice stuff -> client closes after disconnecting! VoiceState! SendVoice!
+- Fix random errors (client.Update())
+- Fail at login -> no error?
+- Add new features for example pins
+- Doesn't work for VS 2013?
+- Create the wiki
+- Create demos and tutorials (can combine those)

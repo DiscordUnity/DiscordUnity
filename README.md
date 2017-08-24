@@ -1,3 +1,4 @@
+#DISCLAIMER This library is now outdated for atleast a year and discord has changed a lot over this period of time so it expect it to not work. But feel free to download source code and update it with the documentation of discord api.
 # DiscordUnity
 A DiscordAPI made for Unity and only usable for Unity. It contains special features to make it all work.
 

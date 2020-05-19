@@ -9,4 +9,10 @@
     <ProjectReference Include="..\DiscordUnity2\DiscordUnity2.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="config.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

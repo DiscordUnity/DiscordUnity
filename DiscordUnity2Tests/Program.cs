@@ -1,13 +1,14 @@
 ﻿using DiscordUnity2;
+using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Threading;
 
 namespace DiscordUnity2Tests
 {
     class Program
     {
-        private const string Token = "NzEyMDIzMDkzODk5NjkwMDE1.XsLhTw.yZxTgImP0NOdAwvuTt9Tf8aO-ws";
-
         private static Thread thread;
 
         static void Main(string[] args)
@@ -22,7 +23,16 @@ namespace DiscordUnity2Tests
 
             static async void Start()
             {
-                await DiscordUnity.StartWithBot(Token);
+                string token;
+
+                using (StreamReader r = new StreamReader("config.json"))
+                {
+                    string json = r.ReadToEnd();
+                    var config = JsonConvert.DeserializeObject<Dictionary<string, string>>(json);
+                    token = config["token"];
+                }
+
+                await DiscordUnity.StartWithBot(token);
                 Console.WriteLine("DiscordUnity Started: " + (Thread.CurrentThread == thread));
             }
 

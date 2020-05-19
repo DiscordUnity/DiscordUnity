@@ -5,25 +5,30 @@ using System;
 using System.Text;
 using System.Net.Http;
 using System.Threading;
+using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using System.Net.WebSockets;
+using DiscordUnity2.Rest;
 
 namespace DiscordUnity2
 {
+    // Create API - Think of a infrastructure
+    // Finish Models
+    // - Audio Logs
+    // - Invite
+    // Finish Http Calls
+    // - All calls
+
     public static class DiscordUnity
     {
-        private const string API = "https://discord.com/api";
-
         private static string url;
         private static string token;
         private static string session;
-        private static Task listener;
-        private static HttpClient client;
-        private static ClientWebSocket socket;
-        private static CancellationTokenSource cancelSource;
         private static bool acked = false;
         private static int sequence;
+
+        private static Task listener;
+        private static ClientWebSocket socket;
 
         public static bool IsActive { get; private set; }
         public static ILogger Logger { get; set; }
@@ -33,6 +38,7 @@ namespace DiscordUnity2
         private static readonly SemaphoreSlim sendLock;
         private static TaskCompletionSource<bool> startTask;
         internal static Queue<Action> callbacks;
+        internal static CancellationTokenSource CancelSource;
 
         static DiscordUnity()
         {
@@ -65,26 +71,26 @@ namespace DiscordUnity2
             token = botToken;
             IsActive = true;
 
-            cancelSource = new CancellationTokenSource();
-            client = new HttpClient();
-            client.DefaultRequestHeaders.Add("User-Agent", $"DiscordBot ({"https://github.com/DiscordUnity/DiscordUnity"}, {"1.0"})");
-            client.DefaultRequestHeaders.Add("Authorization", $"Bot {token}");
-            HttpResponseMessage response = await client.GetAsync(API + "/gateway/bot", cancelSource.Token);
+            CancelSource = new CancellationTokenSource();
+            DiscordRest.Client = new HttpClient();
+            DiscordRest.Client.DefaultRequestHeaders.Add("User-Agent", $"DiscordBot ({"https://github.com/DiscordUnity/DiscordUnity"}, {"1.0"})");
+            DiscordRest.Client.DefaultRequestHeaders.Add("Authorization", $"Bot {token}");
 
-            if (!response.IsSuccessStatusCode)
+            var gatewayResult = await DiscordRest.GetBotGateway();
+
+            if (!gatewayResult)
             {
                 IsActive = false;
-                Logger.LogError("Retrieving gateway failed: " + response.ReasonPhrase);
+                Logger.LogError("Retrieving gateway failed: " + gatewayResult.Exception);
                 Stop();
                 return false;
             }
 
-            GatewayModel gateway = JsonConvert.DeserializeObject<GatewayModel>(await response.Content.ReadAsStringAsync());
-            url = gateway.Url + "?v=6&encoding=json";
+            url = gatewayResult.Data.Url + "?v=6&encoding=json";
             Logger.Log("Gateway received: " + url);
 
             socket = new ClientWebSocket();
-            await socket.ConnectAsync(new Uri(url), cancelSource.Token);
+            await socket.ConnectAsync(new Uri(url), CancelSource.Token);
 
             if (socket.State != WebSocketState.Open)
             {
@@ -130,10 +136,10 @@ namespace DiscordUnity2
             session = null;
             socket?.Dispose();
             socket = null;
-            client?.Dispose();
-            client = null;
-            cancelSource?.Cancel();
-            cancelSource = null;
+            DiscordRest.Client?.Dispose();
+            DiscordRest.Client = null;
+            CancelSource?.Cancel();
+            CancelSource = null;
             Logger.Log("DiscordUnity stopped.");
         }
 
@@ -157,8 +163,8 @@ namespace DiscordUnity2
         private static async Task Resume()
         {
             listener.Dispose();
-            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Failed heartbeat ack", cancelSource.Token);
-            await socket.ConnectAsync(new Uri(url), cancelSource.Token);
+            await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Failed heartbeat ack", CancelSource.Token);
+            await socket.ConnectAsync(new Uri(url), CancelSource.Token);
             listener = Listen();
 
             PayloadModel<ResumeModel> resume = new PayloadModel<ResumeModel>
@@ -181,7 +187,7 @@ namespace DiscordUnity2
 
             while (IsActive && socket?.State == WebSocketState.Open)
             {
-                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancelSource.Token);
+                WebSocketReceiveResult result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), CancelSource.Token);
 
                 if (!result.EndOfMessage)
                 {
@@ -245,7 +251,7 @@ namespace DiscordUnity2
 
             try
             {
-                await socket.SendAsync(buffer, WebSocketMessageType.Text, true, cancelSource.Token);
+                await socket.SendAsync(buffer, WebSocketMessageType.Text, true, CancelSource.Token);
             }
 
             finally
@@ -493,7 +499,7 @@ namespace DiscordUnity2
 
                         case "webhooks_update":
                             {
-                                var webhook = payload.As<WebhookModel>().Data;
+                                var webhook = payload.As<ServerWebhookModel>().Data;
                             }
                             break;
                     }

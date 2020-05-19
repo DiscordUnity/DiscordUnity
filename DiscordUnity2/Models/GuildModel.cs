@@ -124,6 +124,24 @@ namespace DiscordUnity2.Models
 
     public class WebhookModel
     {
+        public string Id { get; set; }
+        public WebhookType Type { get; set; }
+        public string GuildId { get; set; }
+        public string ChannelId { get; set; }
+        public UserModel User { get; set; }
+        public string Name { get; set; }
+        public string Avatar { get; set; }
+        public string Token { get; set; }
+    }
+
+    public enum WebhookType
+    {
+        Incoming = 1,           // Incoming Webhooks can post messages to channels with a generated token
+        ChannelFollower = 2     // Channel Follower Webhooks are internal webhooks used with Channel Following to post new messages into channels
+    }
+
+    public class ServerWebhookModel
+    {
         public string GuildId { get; set; }
         public string ChannelId { get; set; }
     }

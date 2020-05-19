@@ -6,7 +6,7 @@ using System.Threading;
 using System.Net.Security;
 using System.Collections.Generic;
 using System.Security.Cryptography.X509Certificates;
-using WebSocketSharp;
+//using WebSocketSharp;
 using UnityEngine;
 
 namespace DiscordUnity
@@ -112,7 +112,7 @@ namespace DiscordUnity
         internal bool blockSend = false;
         internal bool hasToken { get { return !string.IsNullOrEmpty(token); } }
         internal Queue<Action> unityInvoker;
-        internal WebSocket socket;
+        //internal WebSocket socket;
         internal Dictionary<string, DiscordVoiceClient> voiceClients;
         
         private int sequence = 0;
@@ -533,7 +533,7 @@ namespace DiscordUnity
 
             voiceClients.Clear();
             Call(HttpMethod.Post, "https://discordapp.com/api/auth/logout", (result) => { callback(this, "Client logged out.", new DiscordError()); }, (result) => { callback(this, "Client logged out.", new DiscordError()); }, JsonUtility.ToJson(new DiscordTokenJSON() { token = token }));
-            socket.CloseAsync();
+            //socket.CloseAsync();
         }
 
         /// <summary> You should call Stop(); </summary>
@@ -541,14 +541,14 @@ namespace DiscordUnity
         {
             if (isOnline)
             {
-                socket.CloseAsync();
+                //socket.CloseAsync();
                 return;
             }
 
             sequence = 0;
             heartbeat = 41250;
             token = "";
-            socket = null;
+            //socket = null;
             _servers = null;
             _privateChannels = null;
             user = null;
@@ -639,7 +639,7 @@ namespace DiscordUnity
             if (!isOnline) return;
             string specialJson = "{\"idle_since\":" + (idle ? ((int)(DateTime.UtcNow - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalMilliseconds).ToString() : "null") + ",\"game\":{\"name\":" + (string.IsNullOrEmpty(game) ? "null" : "\"" + game + "\"") + "}}";
             Debugger.WriteLine("SocketSend: " + specialJson);
-            socket.Send(specialJson);
+            //socket.Send(specialJson);
         }
 
         /// <summary>
@@ -720,7 +720,7 @@ namespace DiscordUnity
             };
 
             Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
-            socket.Send(JsonUtility.ToJson(args));
+            //socket.Send(JsonUtility.ToJson(args));
         }
 
         /*public void GetChannelByID(string channelID, DiscordChannelCallback callback)
@@ -758,7 +758,7 @@ namespace DiscordUnity
         {
             MemberChunkArgs args = new MemberChunkArgs() { guild_id = serverID, query = filter, limit = limit };
             Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
-            socket.SendAsync(JsonUtility.ToJson(args), null);
+            //socket.SendAsync(JsonUtility.ToJson(args), null);
         }
 
         private void OnGetGatewayUrl(string result)
@@ -771,6 +771,7 @@ namespace DiscordUnity
                 return;
             }
 
+            /*
             socket = new WebSocket(url);
 
             socket.OnMessage += (sender, message) =>
@@ -820,6 +821,7 @@ namespace DiscordUnity
             };
 
             socket.Connect();
+            */
         }
 
         private void SendIdentifyPacket()
@@ -843,7 +845,7 @@ namespace DiscordUnity
                 }
             };
 
-            socket.Send(JsonUtility.ToJson(args));
+            //socket.Send(JsonUtility.ToJson(args));
             Debugger.WriteLine("SocketSend: " + JsonUtility.ToJson(args));
         }
 
@@ -855,7 +857,7 @@ namespace DiscordUnity
 
         private void KeepAlive()
         {
-            while (socket != null && hasToken)
+            /*while (socket != null && hasToken)
             {
                 Thread.Sleep(heartbeat);
                 KeepAliveArgs args = new KeepAliveArgs() { op = 1, d = sequence };
@@ -877,7 +879,7 @@ namespace DiscordUnity
                         }
                     }
                 }
-            }
+            }*/
 
             Debug.Log("Finally got this bastard.");
         }

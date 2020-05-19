@@ -1,6 +1,4 @@
-# DISCLAIMER This library is now outdated for atleast 3 years and discord has changed a lot over this period of time so expect it to not work. But feel free to download source code and update it with the documentation of discord api.
-
-Discord has now their own SDK that supports Unity, you can find it on https://discord.com/developers/docs/game-sdk/sdk-starter-guide 
+# DISCLAIMER This library is being updated after a leap of 3 years.
 
 # DiscordUnity
 A DiscordAPI made for Unity and only usable for Unity. It contains special features to make it all work.

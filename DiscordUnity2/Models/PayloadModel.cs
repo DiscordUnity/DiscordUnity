@@ -5,7 +5,7 @@ namespace DiscordUnity2.Models
 {
     public class PayloadModel : PayloadModel<JObject>
     {
-        public PayloadModel<T> As<T>() => new PayloadModel<T> { Op = Op, Data = Data.ToObject<T>() };
+        public PayloadModel<T> As<T>() => new PayloadModel<T> { Op = Op, Data = Data.ToObject<T>(DiscordUnity.JsonSerializer) };
     }
 
     public class PayloadModel<T>

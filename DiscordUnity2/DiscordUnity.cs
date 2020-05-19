@@ -28,6 +28,7 @@ namespace DiscordUnity2
         public static bool IsActive { get; private set; }
         public static ILogger Logger { get; set; }
 
+        internal static JsonSerializer JsonSerializer => JsonSerializer.CreateDefault(JsonSettings);
         private static readonly JsonSerializerSettings JsonSettings;
         private static readonly SemaphoreSlim sendLock;
         private static TaskCompletionSource<bool> startTask;
@@ -38,10 +39,14 @@ namespace DiscordUnity2
             Logger = new Logger();
             sendLock = new SemaphoreSlim(1, 1);
             callbacks = new Queue<Action>();
+
             JsonSettings = new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore,
-                ContractResolver = new CamelCasePropertyNamesContractResolver()
+                ContractResolver = new DefaultContractResolver
+                {
+                    NamingStrategy = new SnakeCaseNamingStrategy()
+                }
             };
         }
 
@@ -62,6 +67,7 @@ namespace DiscordUnity2
 
             cancelSource = new CancellationTokenSource();
             client = new HttpClient();
+            client.DefaultRequestHeaders.Add("User-Agent", $"DiscordBot ({"https://github.com/DiscordUnity/DiscordUnity"}, {"1.0"})");
             client.DefaultRequestHeaders.Add("Authorization", $"Bot {token}");
             HttpResponseMessage response = await client.GetAsync(API + "/gateway/bot", cancelSource.Token);
 
@@ -74,11 +80,11 @@ namespace DiscordUnity2
             }
 
             GatewayModel gateway = JsonConvert.DeserializeObject<GatewayModel>(await response.Content.ReadAsStringAsync());
-            url = gateway.Url;
-            Logger.Log("Gateway received!");
+            url = gateway.Url + "?v=6&encoding=json";
+            Logger.Log("Gateway received: " + url);
 
             socket = new ClientWebSocket();
-            await socket.ConnectAsync(new Uri(url + "?v=6&encoding=json"), cancelSource.Token);
+            await socket.ConnectAsync(new Uri(url), cancelSource.Token);
 
             if (socket.State != WebSocketState.Open)
             {
@@ -88,7 +94,7 @@ namespace DiscordUnity2
                 return false;
             }
 
-            Logger.Log("Connected!");
+            Logger.Log("Connected.");
             listener = Listen();
 
             PayloadModel<IdentityModel> identity = new PayloadModel<IdentityModel>
@@ -152,7 +158,7 @@ namespace DiscordUnity2
         {
             listener.Dispose();
             await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Failed heartbeat ack", cancelSource.Token);
-            await socket.ConnectAsync(new Uri(url + "?v=6&encoding=json"), cancelSource.Token);
+            await socket.ConnectAsync(new Uri(url), cancelSource.Token);
             listener = Listen();
 
             PayloadModel<ResumeModel> resume = new PayloadModel<ResumeModel>
@@ -248,12 +254,12 @@ namespace DiscordUnity2
             }
         }
 
-        private static async Task OnSocketMessage(string message)
+        private static async Task OnSocketMessage(string json)
         {
             try
             {
-                Logger.Log("Received Message: " + message);
-                PayloadModel payload = JsonConvert.DeserializeObject<PayloadModel>(message);
+                Logger.Log("Received Message: " + json);
+                PayloadModel payload = JsonConvert.DeserializeObject<PayloadModel>(json, JsonSettings);
 
                 if (payload.Sequence.HasValue)
                     sequence = payload.Sequence.Value;
@@ -277,12 +283,14 @@ namespace DiscordUnity2
                         break;
                     case 9: // Invalid Session
                         Logger.LogError("Received invalid session from discord.");
-                        Stop();
+                        var resume = payload.As<bool>().Data;
+                        if (resume) await Resume();
+                        else Stop();
                         break;
                     case 10: // Hello
                         acked = true;
-                        var heartbeat = payload.As<HeartbeatModel>();
-                        Heartbeat(heartbeat.Data.HeartbeatInterval);
+                        var heartbeat = payload.As<HeartbeatModel>().Data;
+                        Heartbeat(heartbeat.HeartbeatInterval);
                         break;
                     case 11: // Heartbeat Ack
                         Logger.Log("Heatbeat Ack");
@@ -292,198 +300,200 @@ namespace DiscordUnity2
 
                 if (!string.IsNullOrEmpty(payload.Event))
                 {
-                    Logger.Log("Received event: " + payload.Event.ToLower());
-
                     switch (payload.Event.ToLower())
                     {
                         case "ready":
                             {
-                                Logger.Log("Ready!");
+                                Logger.Log("Ready.");
+
+                                var ready = payload.As<ReadyModel>().Data;
+
                                 callbacks.Enqueue(() => startTask.SetResult(true));
                             }
                             break;
                         case "resumed":
                             {
-
+                                Logger.Log("Resumed.");
                             }
                             break;
                         case "reonnect":
                             {
+                                Logger.Log("Reconnect.");
                                 await Resume();
                             }
                             break;
 
                         case "channel_create":
                             {
-
+                                var channel = payload.As<ChannelModel>().Data;
                             }
                             break;
                         case "channel_update":
                             {
-
+                                var channel = payload.As<ChannelModel>().Data;
                             }
                             break;
                         case "channel_delete":
                             {
-
+                                var channel = payload.As<ChannelModel>().Data;
                             }
                             break;
                         case "channel_pins_update":
                             {
-
+                                var channelPins = payload.As<ChannelPinsModel>().Data;
                             }
                             break;
 
                         case "guild_create":
                             {
-
+                                var guild = payload.As<GuildModel>().Data;
                             }
                             break;
                         case "guild_update":
                             {
-
+                                var guild = payload.As<GuildModel>().Data;
                             }
                             break;
                         case "guild_delete":
                             {
-
+                                var guild = payload.As<GuildModel>().Data;
                             }
                             break;
                         case "guild_ban_add":
                             {
-
+                                var guildBan = payload.As<GuildBanModel>().Data;
                             }
                             break;
                         case "guild_ban_remove":
                             {
-
+                                var guildBan = payload.As<GuildBanModel>().Data;
                             }
                             break;
                         case "guild_emojis_update":
                             {
-
+                                var guildEmojis = payload.As<GuildEmojisModel>().Data;
                             }
                             break;
                         case "guild_member_add":
                             {
-
+                                var guildMember = payload.As<GuildMemberModel>().Data;
                             }
                             break;
                         case "guild_member_remove":
                             {
-
+                                var guildMember = payload.As<GuildMemberModel>().Data;
                             }
                             break;
                         case "guild_member_update":
                             {
-
+                                var guildMember = payload.As<GuildMemberModel>().Data;
                             }
                             break;
                         case "guild_members_chunk":
                             {
-
+                                var guildMembersChunk = payload.As<GuildMembersChunkModel>().Data;
                             }
                             break;
                         case "guild_role_create":
                             {
-
+                                var guildRole = payload.As<GuildRoleModel>().Data;
                             }
                             break;
                         case "guild_role_update":
                             {
-
+                                var guildRole = payload.As<GuildRoleModel>().Data;
                             }
                             break;
                         case "guild_role_delete":
                             {
-
+                                var guildRoleId = payload.As<GuildRoleIdModel>().Data;
                             }
                             break;
 
                         case "invite_create":
                             {
-
+                                var invite = payload.As<InviteModel>().Data;
                             }
                             break;
                         case "invite_delete":
                             {
-
+                                var invite = payload.As<InviteModel>().Data;
                             }
                             break;
 
                         case "message_create":
                             {
-
+                                var message = payload.As<MessageModel>().Data;
                             }
                             break;
                         case "message_update":
                             {
-
+                                var message = payload.As<MessageModel>().Data;
                             }
                             break;
                         case "message_delete":
                             {
-
+                                var message = payload.As<MessageModel>().Data;
                             }
                             break;
-                        case "message_create_bulk":
+                        case "message_delete_bulk":
                             {
-
+                                var messageBulk = payload.As<MessageBulkModel>().Data;
                             }
                             break;
                         case "message_reaction_add":
                             {
-
+                                var messageReaction = payload.As<MessageReactionModel>().Data;
                             }
                             break;
                         case "message_reaction_remove":
                             {
-
+                                var messageReaction = payload.As<MessageReactionModel>().Data;
                             }
                             break;
                         case "message_reaction_remove_all":
                             {
-
+                                var messageReaction = payload.As<MessageReactionModel>().Data;
                             }
                             break;
                         case "message_reaction_remove_emoji":
                             {
-
+                                var messageReaction = payload.As<MessageReactionModel>().Data;
                             }
                             break;
 
                         case "presence_update":
                             {
-
+                                var presence = payload.As<PresenceModel>().Data;
                             }
                             break;
 
                         case "typing_start":
                             {
-
+                                var typing = payload.As<TypingModel>().Data;
                             }
                             break;
 
                         case "user_update":
                             {
-
+                                var user = payload.As<UserModel>().Data;
                             }
                             break;
 
                         case "voice_state_update":
                             {
-
+                                var voiceState = payload.As<VoiceStateModel>().Data;
                             }
                             break;
                         case "voice_server_update":
                             {
-
+                                var voiceServer = payload.As<VoiceServerModel>().Data;
                             }
                             break;
 
                         case "webhooks_update":
                             {
-
+                                var webhook = payload.As<WebhookModel>().Data;
                             }
                             break;
                     }

@@ -1,6 +1,6 @@
 ﻿namespace DiscordUnity2.Models
 {
-    public class TypingModel
+    internal class TypingModel
     {
         public string ChannelId { get; set; }
         public string GuildId { get; set; }

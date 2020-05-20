@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class ReadyModel
+    internal class ReadyModel
     {
         [JsonProperty("v")]
         public int Version { get; set; }

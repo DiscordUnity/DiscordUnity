@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class ChannelModel
+    internal class ChannelModel
     {
         public string Id { get; set; }
         public ChannelType Type { get; set; }
@@ -35,7 +35,7 @@ namespace DiscordUnity2.Models
         GUILD_STORE = 6     // A channel in which game developers can sell their game on Discord
     }
 
-    public class ChannelPinsModel
+    internal class ChannelPinsModel
     {
         public string GuildId { get; set; }
         public string ChannelId { get; set; }

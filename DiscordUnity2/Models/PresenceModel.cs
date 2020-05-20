@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class PresenceModel
+    internal class PresenceModel
     {
         public UserModel User { get; set; }
         public string[] Roles { get; set; }
@@ -23,7 +23,7 @@ namespace DiscordUnity2.Models
         Offline
     }
 
-    public class ClientStatusModel
+    internal class ClientStatusModel
     {
         public string Desktop { get; set; }
         public string Mobile { get; set; }

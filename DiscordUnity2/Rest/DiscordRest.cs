@@ -3,9 +3,9 @@ using System;
 using System.Net.Http;
 using System.Threading.Tasks;
 
-namespace DiscordUnity2.Rest
+namespace DiscordUnity2
 {
-    public static partial class DiscordRest
+    public static partial class DiscordAPI
     {
         internal const string API = "https://discord.com/api";
         internal static HttpClient Client;

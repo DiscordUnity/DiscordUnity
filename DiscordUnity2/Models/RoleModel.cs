@@ -1,6 +1,6 @@
 ﻿namespace DiscordUnity2.Models
 {
-    public class RoleModel
+    internal class RoleModel
     {
         public string Id { get; set; }
         public string Name { get; set; }

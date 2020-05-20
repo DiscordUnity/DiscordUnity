@@ -1,6 +1,6 @@
 ﻿namespace DiscordUnity2.Models
 {
-    public class VoiceStateModel
+    internal class VoiceStateModel
     {
         public string GuildId { get; set; }
         public string ChannelId { get; set; }
@@ -15,7 +15,7 @@
         public bool Suppress { get; set; }
     }
 
-    public class VoiceServerModel
+    internal class VoiceServerModel
     {
         public string Token { get; set; }
         public string GuildId { get; set; }

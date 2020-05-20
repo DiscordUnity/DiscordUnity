@@ -19,7 +19,7 @@ namespace DiscordUnity2Tests
             Console.WriteLine("Starting up DiscordUnity!");
             thread = Thread.CurrentThread;
 
-            DiscordUnity.Logger = new Logger();
+            DiscordAPI.Logger = new Logger();
 
             static async void Start()
             {
@@ -32,16 +32,16 @@ namespace DiscordUnity2Tests
                     token = config["token"];
                 }
 
-                await DiscordUnity.StartWithBot(token);
+                await DiscordAPI.StartWithBot(token);
                 Console.WriteLine("DiscordUnity Started: " + (Thread.CurrentThread == thread));
             }
 
             Start();
 
             while (Console.ReadLine() != "exit")
-                DiscordUnity.Update();
+                DiscordAPI.Update();
 
-            DiscordUnity.Stop();
+            DiscordAPI.Stop();
 
             Console.ReadKey();
         }

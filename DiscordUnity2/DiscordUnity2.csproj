@@ -19,8 +19,4 @@
     </Reference>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="API\" />
-  </ItemGroup>
-
 </Project>

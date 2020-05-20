@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class MessageModel
+    internal class MessageModel
     {
         public string Id { get; set; }
         public string ChannelId { get; set; }
@@ -30,7 +30,7 @@ namespace DiscordUnity2.Models
         public MessageFlags Flags { get; set; }
     }
 
-    public class ChannelMentionModel
+    internal class ChannelMentionModel
     {
         public string Id { get; set; }
         public string GuildId { get; set; }
@@ -38,7 +38,7 @@ namespace DiscordUnity2.Models
         public string Name { get; set; }
     }
 
-    public class AttachmentModel
+    internal class AttachmentModel
     {
         public string Id { get; set; }
         public string Filename { get; set; }
@@ -49,7 +49,7 @@ namespace DiscordUnity2.Models
         public int? Width { get; set; }
     }
 
-    public class EmbedModel
+    internal class EmbedModel
     {
         public string Title { get; set; }
         public EmbedType Type { get; set; }
@@ -76,14 +76,14 @@ namespace DiscordUnity2.Models
         Link
     }
 
-    public class EmbedFooterModel
+    internal class EmbedFooterModel
     {
         public string Text { get; set; }
         public string IconUrl { get; set; }
         public string ProxyIconUrl { get; set; }
     }
 
-    public class EmbedImageModel
+    internal class EmbedImageModel
     {
         public string Url { get; set; }
         public string proxyUrl { get; set; }
@@ -91,7 +91,7 @@ namespace DiscordUnity2.Models
         public int? Width { get; set; }
     }
 
-    public class EmbedThumbnailModel
+    internal class EmbedThumbnailModel
     {
         public string Url { get; set; }
         public string proxyUrl { get; set; }
@@ -99,20 +99,20 @@ namespace DiscordUnity2.Models
         public int? Width { get; set; }
     }
 
-    public class EmbedVideoModel
+    internal class EmbedVideoModel
     {
         public string Url { get; set; }
         public int? Height { get; set; }
         public int? Width { get; set; }
     }
 
-    public class EmbedProviderModel
+    internal class EmbedProviderModel
     {
         public string Name { get; set; }
         public string Url { get; set; }
     }
 
-    public class EmbedAuthorModel
+    internal class EmbedAuthorModel
     {
         public string Name { get; set; }
         public string Url { get; set; }
@@ -120,21 +120,21 @@ namespace DiscordUnity2.Models
         public string ProxyIconUrl { get; set; }
     }
 
-    public class EmbedFieldModel
+    internal class EmbedFieldModel
     {
         public string Name { get; set; }
         public string Value { get; set; }
         public bool? Inline { get; set; }
     }
 
-    public class ReactionModel
+    internal class ReactionModel
     {
         public int Count { get; set; }
         public bool Me { get; set; }
         public EmojiModel Emoji { get; set; }
     }
 
-    public class MessageReactionModel
+    internal class MessageReactionModel
     {
         public string UserId { get; set; }
         public string ChannelId { get; set; }
@@ -163,7 +163,7 @@ namespace DiscordUnity2.Models
         GUILD_DISCOVERY_REQUALIFIED = 15
     }
 
-    public class MessageActivityModel
+    internal class MessageActivityModel
     {
         public MessageActivityType Type { get; set; }
         public string PartyId { get; set; }
@@ -177,7 +177,7 @@ namespace DiscordUnity2.Models
         JOIN_REQUEST = 5
     }
 
-    public class MessageApplicationModel
+    internal class MessageApplicationModel
     {
         public string Id { get; set; }
         public string CoverImage { get; set; }
@@ -186,7 +186,7 @@ namespace DiscordUnity2.Models
         public string Name { get; set; }
     }
 
-    public class MessageReferenceModel
+    internal class MessageReferenceModel
     {
         public string MessageId { get; set; }
         public string ChannelId { get; set; }
@@ -202,7 +202,7 @@ namespace DiscordUnity2.Models
         URGENT = 16,				// this message came from the urgent message system
     }
 
-    public class MessageBulkModel
+    internal class MessageBulkModel
     {
         public string[] Ids { get; set; }
         public string ChannelId { get; set; }

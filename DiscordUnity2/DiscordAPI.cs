@@ -8,18 +8,23 @@ using System.Threading;
 using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Collections.Generic;
-using DiscordUnity2.Rest;
+using DiscordUnity2.API;
 
 namespace DiscordUnity2
 {
-    // Create API - Think of a infrastructure
-    // Finish Models
+    // TODO: Create API 
+    // - Events through interfaces
+    // - API Calls through DiscordAPI
+    // - State
+    // Finish Internal Models
     // - Audio Logs
     // - Invite
     // Finish Http Calls
     // - All calls
+    // Finish State
+    // - All states
 
-    public static class DiscordUnity
+    public static partial class DiscordAPI
     {
         private static string url;
         private static string token;
@@ -33,16 +38,18 @@ namespace DiscordUnity2
         public static bool IsActive { get; private set; }
         public static ILogger Logger { get; set; }
 
-        internal static JsonSerializer JsonSerializer => JsonSerializer.CreateDefault(JsonSettings);
+        internal static readonly JsonSerializer JsonSerializer;
         private static readonly JsonSerializerSettings JsonSettings;
         private static readonly SemaphoreSlim sendLock;
         private static TaskCompletionSource<bool> startTask;
-        internal static Queue<Action> callbacks;
+        private static Queue<Action> callbacks;
         internal static CancellationTokenSource CancelSource;
+        internal static DiscordInterfaces interfaces;
 
-        static DiscordUnity()
+        static DiscordAPI()
         {
             Logger = new Logger();
+            interfaces = new DiscordInterfaces();
             sendLock = new SemaphoreSlim(1, 1);
             callbacks = new Queue<Action>();
 
@@ -54,7 +61,16 @@ namespace DiscordUnity2
                     NamingStrategy = new SnakeCaseNamingStrategy()
                 }
             };
+
+            JsonSerializer = JsonSerializer.CreateDefault(JsonSettings);
         }
+
+        public static void RegisterEventsHandler(IDiscordInterface e)
+            => interfaces.AddEventHandler(e);
+        public static void UnregisterEventsHandler(IDiscordInterface e) 
+            => interfaces.RemoveEventHandler(e);
+        internal static void Sync(Action callback)
+            => callbacks.Enqueue(callback);
 
         /// <summary> Starts DiscordUnity with a bot token. </summary>
         /// <param name="botToken">A token received by creating a bot on Discord's developer portal.</param>
@@ -70,13 +86,13 @@ namespace DiscordUnity2
 
             token = botToken;
             IsActive = true;
-
+            InitializeState();
             CancelSource = new CancellationTokenSource();
-            DiscordRest.Client = new HttpClient();
-            DiscordRest.Client.DefaultRequestHeaders.Add("User-Agent", $"DiscordBot ({"https://github.com/DiscordUnity/DiscordUnity"}, {"1.0"})");
-            DiscordRest.Client.DefaultRequestHeaders.Add("Authorization", $"Bot {token}");
+            Client = new HttpClient();
+            Client.DefaultRequestHeaders.Add("User-Agent", $"DiscordBot ({"https://github.com/DiscordUnity/DiscordUnity"}, {"1.0"})");
+            Client.DefaultRequestHeaders.Add("Authorization", $"Bot {token}");
 
-            var gatewayResult = await DiscordRest.GetBotGateway();
+            var gatewayResult = await GetBotGateway();
 
             if (!gatewayResult)
             {
@@ -120,6 +136,7 @@ namespace DiscordUnity2
 
             startTask = new TaskCompletionSource<bool>();
             await Send(JsonConvert.SerializeObject(identity, JsonSettings));
+            interfaces.OnDiscordAPIOpen();
             return await startTask.Task;
         }
 
@@ -127,7 +144,7 @@ namespace DiscordUnity2
         public static void Stop()
         {
             if (startTask != null && !startTask.Task.IsCompleted)
-                callbacks.Enqueue(() => startTask.SetResult(false));
+                Sync(() => startTask.SetResult(false));
 
             startTask = null;
             IsActive = false;
@@ -136,11 +153,12 @@ namespace DiscordUnity2
             session = null;
             socket?.Dispose();
             socket = null;
-            DiscordRest.Client?.Dispose();
-            DiscordRest.Client = null;
+            Client?.Dispose();
+            Client = null;
             CancelSource?.Cancel();
             CancelSource = null;
             Logger.Log("DiscordUnity stopped.");
+            interfaces.OnDiscordAPIClosed();
         }
 
         /// <summary> Updates DiscordUnity and hooks async calls back to calling thread. Without this, DiscordUnity will not function. </summary>
@@ -308,18 +326,21 @@ namespace DiscordUnity2
                 {
                     switch (payload.Event.ToLower())
                     {
+                        // ------ API ------ 
+
                         case "ready":
                             {
                                 Logger.Log("Ready.");
 
                                 var ready = payload.As<ReadyModel>().Data;
 
-                                callbacks.Enqueue(() => startTask.SetResult(true));
+                                Sync(() => startTask.SetResult(true));
                             }
                             break;
                         case "resumed":
                             {
                                 Logger.Log("Resumed.");
+                                Sync(() => interfaces.OnDiscordAPIResumed());
                             }
                             break;
                         case "reonnect":
@@ -328,6 +349,8 @@ namespace DiscordUnity2
                                 await Resume();
                             }
                             break;
+
+                        //  ------ Channels ------ 
 
                         case "channel_create":
                             {
@@ -349,6 +372,8 @@ namespace DiscordUnity2
                                 var channelPins = payload.As<ChannelPinsModel>().Data;
                             }
                             break;
+
+                        //  ------ Servers ------ 
 
                         case "guild_create":
                             {
@@ -416,6 +441,8 @@ namespace DiscordUnity2
                             }
                             break;
 
+                        //  ------ Invites ------ 
+
                         case "invite_create":
                             {
                                 var invite = payload.As<InviteModel>().Data;
@@ -426,6 +453,8 @@ namespace DiscordUnity2
                                 var invite = payload.As<InviteModel>().Data;
                             }
                             break;
+
+                        //  ------ Messages ------ 
 
                         case "message_create":
                             {
@@ -468,6 +497,8 @@ namespace DiscordUnity2
                             }
                             break;
 
+                        //  ------ Status ------ 
+
                         case "presence_update":
                             {
                                 var presence = payload.As<PresenceModel>().Data;
@@ -486,6 +517,8 @@ namespace DiscordUnity2
                             }
                             break;
 
+                        //  ------ Voice ------ 
+
                         case "voice_state_update":
                             {
                                 var voiceState = payload.As<VoiceStateModel>().Data;
@@ -496,6 +529,8 @@ namespace DiscordUnity2
                                 var voiceServer = payload.As<VoiceServerModel>().Data;
                             }
                             break;
+
+                        //  ------ Webhooks ------ 
 
                         case "webhooks_update":
                             {

@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class InviteModel
+    internal class InviteModel
     {
         public string ChannelId { get; set; }
         public string Code { get; set; }

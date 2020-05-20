@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class IdentityModel
+    internal class IdentityModel
     {
         public string Token { get; set; }
         public Dictionary<string, string> Properties { get; set; }

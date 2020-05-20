@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class ResumeModel
+    internal class ResumeModel
     {
         public string Token { get; set; }
         public string SessionId { get; set; }

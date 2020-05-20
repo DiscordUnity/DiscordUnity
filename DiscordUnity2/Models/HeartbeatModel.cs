@@ -1,6 +1,6 @@
 ﻿namespace DiscordUnity2.Models
 {
-    public class HeartbeatModel
+    internal class HeartbeatModel
     {
         public int HeartbeatInterval { get; set; }
     }

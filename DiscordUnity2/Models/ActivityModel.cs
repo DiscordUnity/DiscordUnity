@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class ActivityModel
+    internal class ActivityModel
     {
         public string Name { get; set; }
         public ActivityType Type { get; set; }
@@ -39,26 +39,26 @@ namespace DiscordUnity2.Models
         PLAY = 32
     }
 
-    public class ActivityTimestampsModel
+    internal class ActivityTimestampsModel
     {
         public int Start { get; set; }
         public int End { get; set; }
     }
 
-    public class ActivityEmojiModel
+    internal class ActivityEmojiModel
     {
         public string Name { get; set; }
         public string Id { get; set; }
         public bool? Animated { get; set; }
     }
 
-    public class ActivityPartyModel
+    internal class ActivityPartyModel
     {
         public string Id { get; set; }
         public int[] Size { get; set; }
     }
 
-    public class ActivityAssetsModel
+    internal class ActivityAssetsModel
     {
         public string LargeImage { get; set; }
         public string LargeText { get; set; }
@@ -66,7 +66,7 @@ namespace DiscordUnity2.Models
         public string SmallText { get; set; }
     }
 
-    public class ActivitySecretsModel
+    internal class ActivitySecretsModel
     {
         public string Join { get; set; }
         public string Spectate { get; set; }

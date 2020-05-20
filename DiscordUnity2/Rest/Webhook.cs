@@ -1,6 +1,6 @@
-﻿namespace DiscordUnity2.Rest
+﻿namespace DiscordUnity2
 {
-    public static partial class DiscordRest
+    public static partial class DiscordAPI
     {
 
     }

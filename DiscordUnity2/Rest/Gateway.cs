@@ -1,11 +1,11 @@
 ﻿using DiscordUnity2.Models;
 using System.Threading.Tasks;
 
-namespace DiscordUnity2.Rest
+namespace DiscordUnity2
 {
-    public static partial class DiscordRest
+    public static partial class DiscordAPI
     {
-        public static Task<RestResult<GatewayModel>> GetBotGateway()
+        internal static Task<RestResult<GatewayModel>> GetBotGateway()
             => Get<GatewayModel>("/gateway/bot");
     }
 }

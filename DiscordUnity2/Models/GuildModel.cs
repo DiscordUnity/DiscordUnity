@@ -2,7 +2,7 @@
 
 namespace DiscordUnity2.Models
 {
-    public class GuildModel
+    internal class GuildModel
     {
         public string Id { get; set; }
         public string Name { get; set; }
@@ -16,7 +16,7 @@ namespace DiscordUnity2.Models
         public string AfkChannelId { get; set; }
         public int AfkTimeout { get; set; }
         public bool? EmbedEnabled { get; set; }
-        public string EmbedEnabledId { get; set; }
+        public string EmbedChannelId { get; set; }
         public int VerificationLevel { get; set; }
         public int DefaultMessageNotifications { get; set; }
         public int ExplicitContentFilter { get; set; }
@@ -70,7 +70,7 @@ namespace DiscordUnity2.Models
         WELCOME_SCREEN_ENABLED	// Guild has enabled the welcome screen
     }
 
-    public class GuildMemberModel
+    internal class GuildMemberModel
     {
         public string GuildId { get; set; }
         public UserModel User { get; set; }
@@ -82,36 +82,36 @@ namespace DiscordUnity2.Models
         public bool Mute { get; set; }
     }
 
-    public class GuildBanModel
+    internal class GuildBanModel
     {
         public string GuildId { get; set; }
         public UserModel User { get; set; }
     }
 
-    public class GuildEmojisModel
+    internal class GuildEmojisModel
     {
         public string GuildId { get; set; }
         public EmojiModel[] Emojis { get; set; }
     }
 
-    public class GuildRoleModel
+    internal class GuildRoleModel
     {
         public string GuildId { get; set; }
         public RoleModel Role { get; set; }
     }
 
-    public class GuildRoleIdModel
+    internal class GuildRoleIdModel
     {
         public string GuildId { get; set; }
         public string RoleId { get; set; }
     }
 
-    public class GuildIntegrationsModel
+    internal class GuildIntegrationsModel
     {
         public string GuildId { get; set; }
     }
 
-    public class GuildMembersChunkModel
+    internal class GuildMembersChunkModel
     {
         public string GuildId { get; set; }
         public GuildMemberModel[] Members { get; set; }
@@ -122,7 +122,7 @@ namespace DiscordUnity2.Models
         public string Nonce { get; set; }
     }
 
-    public class WebhookModel
+    internal class WebhookModel
     {
         public string Id { get; set; }
         public WebhookType Type { get; set; }
@@ -140,7 +140,7 @@ namespace DiscordUnity2.Models
         ChannelFollower = 2     // Channel Follower Webhooks are internal webhooks used with Channel Following to post new messages into channels
     }
 
-    public class ServerWebhookModel
+    internal class ServerWebhookModel
     {
         public string GuildId { get; set; }
         public string ChannelId { get; set; }

@@ -1,6 +1,6 @@
 ﻿namespace DiscordUnity2.Models
 {
-    public class UserModel
+    internal class UserModel
     {
         public string Id { get; set; }
         public string Username { get; set; }

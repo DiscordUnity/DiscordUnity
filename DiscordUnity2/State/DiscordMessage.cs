@@ -19,15 +19,40 @@ namespace DiscordUnity2.State
         internal DiscordMessage(MessageModel model)
         {
             Id = model.Id;
-            // Channel = model.ChannelId;
-            Server = DiscordAPI.Server[model.GuildId];
-            // Author = model.Author;
+
+            if (string.IsNullOrEmpty(model.GuildId))
+            {
+                Server = null;
+                Channel = DiscordAPI.PrivateChannels[model.ChannelId];
+            }
+
+            else
+            {
+                Server = DiscordAPI.Servers[model.GuildId];
+                Channel = Server.Channels[model.ChannelId];
+            }
+
+            if (model.Author != null) Author = new DiscordUser(model.Author);
             Content = model.Content;
             Timestamp = model.Timestamp;
             EditedTimestamp = model.EditedTimestamp;
             Tts = model.Tts;
             MentionEveryone = model.MentionEveryone;
             Type = model.Type;
+        }
+    }
+
+    public class DiscordReaction
+    {
+        public int Count { get; internal set; }
+        public bool Me { get; internal set; }
+        public DiscordEmoji Emoji { get; internal set; }
+
+        internal DiscordReaction(ReactionModel model)
+        {
+            Count = model.Count;
+            Me = model.Me;
+            if (model.Emoji != null) Emoji = new DiscordEmoji(model.Emoji);
         }
     }
 }

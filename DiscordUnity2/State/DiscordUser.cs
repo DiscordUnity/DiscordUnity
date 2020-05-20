@@ -19,8 +19,20 @@ namespace DiscordUnity2.State
         public UserFlags? PublicFlags { get; internal set; }
 
         internal DiscordUser(UserModel model)
-        { 
-        
+        {
+            Id = model.Id;
+            Username = model.Username;
+            Discriminator = model.Discriminator;
+            Avatar = model.Avatar;
+            Bot = model.Bot;
+            System = model.System;
+            MfaEnabled = model.MfaEnabled;
+            Locale = model.Locale;
+            Verified = model.Verified;
+            Email = model.Email;
+            Flags = model.Flags;
+            PremiumType = model.PremiumType;
+            PublicFlags = model.PublicFlags;
         }
     }
 }

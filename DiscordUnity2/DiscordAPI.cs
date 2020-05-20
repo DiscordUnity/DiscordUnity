@@ -9,20 +9,18 @@ using System.Net.WebSockets;
 using System.Threading.Tasks;
 using System.Collections.Generic;
 using DiscordUnity2.API;
+using DiscordUnity2.State;
+using System.Linq;
 
 namespace DiscordUnity2
 {
-    // TODO: Create API 
-    // - Events through interfaces
-    // - API Calls through DiscordAPI
-    // - State
     // Finish Internal Models
     // - Audio Logs
     // - Invite
     // Finish Http Calls
     // - All calls
     // Finish State
-    // - All states
+    // - More states
 
     public static partial class DiscordAPI
     {
@@ -136,7 +134,6 @@ namespace DiscordUnity2
 
             startTask = new TaskCompletionSource<bool>();
             await Send(JsonConvert.SerializeObject(identity, JsonSettings));
-            interfaces.OnDiscordAPIOpen();
             return await startTask.Task;
         }
 
@@ -173,7 +170,7 @@ namespace DiscordUnity2
 
                 catch (Exception e)
                 {
-                    Logger.LogWarning("Error occured in a callback: " + e.Message);
+                    Logger.LogError("Error occured in a callback.", e);
                 }
             }
         }
@@ -334,7 +331,21 @@ namespace DiscordUnity2
 
                                 var ready = payload.As<ReadyModel>().Data;
 
-                                Sync(() => startTask.SetResult(true));
+                                Sync(() =>
+                                {
+                                    Version = ready.Version;
+                                    session = ready.SessionId;
+                                    User = new DiscordUser(ready.User);
+
+                                    foreach (var channel in ready.PrivateChannels)
+                                        PrivateChannels[channel.Id] = new DiscordChannel(channel);
+
+                                    foreach (var guild in ready.Guilds)
+                                        Servers[guild.Id] = new DiscordServer(guild);
+
+                                    startTask.SetResult(true);
+                                    interfaces.OnDiscordAPIOpen();
+                                });
                             }
                             break;
                         case "resumed":
@@ -355,21 +366,81 @@ namespace DiscordUnity2
                         case "channel_create":
                             {
                                 var channel = payload.As<ChannelModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    if (!string.IsNullOrEmpty(channel.GuildId))
+                                    {
+                                        Servers[channel.GuildId].Channels[channel.Id] = new DiscordChannel(channel);
+                                        interfaces.OnChannelCreated(Servers[channel.GuildId].Channels[channel.Id]);
+                                    }
+
+                                    else
+                                    {
+                                        PrivateChannels[channel.Id] = new DiscordChannel(channel);
+                                        interfaces.OnChannelCreated(Servers[channel.GuildId].Channels[channel.Id]);
+                                    }
+                                });
                             }
                             break;
                         case "channel_update":
                             {
                                 var channel = payload.As<ChannelModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    if (!string.IsNullOrEmpty(channel.GuildId))
+                                    {
+                                        Servers[channel.GuildId].Channels[channel.Id] = new DiscordChannel(channel);
+                                        interfaces.OnChannelUpdated(Servers[channel.GuildId].Channels[channel.Id]);
+                                    }
+
+                                    else
+                                    {
+                                        PrivateChannels[channel.Id] = new DiscordChannel(channel);
+                                        interfaces.OnChannelUpdated(Servers[channel.GuildId].Channels[channel.Id]);
+                                    }
+                                });
                             }
                             break;
                         case "channel_delete":
                             {
                                 var channel = payload.As<ChannelModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    if (!string.IsNullOrEmpty(channel.GuildId))
+                                    {
+                                        interfaces.OnChannelDeleted(Servers[channel.GuildId].Channels[channel.Id]);
+                                        Servers[channel.GuildId].Channels.Remove(channel.Id);
+                                    }
+
+                                    else
+                                    {
+                                        interfaces.OnChannelDeleted(Servers[channel.GuildId].Channels[channel.Id]);
+                                        PrivateChannels.Remove(channel.Id);
+                                    }
+                                });
                             }
                             break;
                         case "channel_pins_update":
                             {
-                                var channelPins = payload.As<ChannelPinsModel>().Data;
+                                var channelPin = payload.As<ChannelPinsModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    if (!string.IsNullOrEmpty(channelPin.GuildId))
+                                    {
+                                        Servers[channelPin.GuildId].Channels[channelPin.ChannelId].LastPinTimestamp = channelPin.LastPinTimestamp;
+                                        interfaces.OnChannelPinsUpdated(Servers[channelPin.GuildId].Channels[channelPin.ChannelId], channelPin.LastPinTimestamp);
+                                    }
+
+                                    else
+                                    {
+                                        PrivateChannels[channelPin.ChannelId].LastPinTimestamp = channelPin.LastPinTimestamp;
+                                        interfaces.OnChannelPinsUpdated(Servers[channelPin.GuildId].Channels[channelPin.ChannelId], channelPin.LastPinTimestamp);
+                                    }
+                                });
                             }
                             break;
 
@@ -378,46 +449,80 @@ namespace DiscordUnity2
                         case "guild_create":
                             {
                                 var guild = payload.As<GuildModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    Servers[guild.Id] = new DiscordServer(guild);
+                                    interfaces.OnServerJoined(Servers[guild.Id]);
+                                });
                             }
                             break;
                         case "guild_update":
                             {
                                 var guild = payload.As<GuildModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    Servers[guild.Id] = new DiscordServer(guild);
+                                    interfaces.OnServerUpdated(Servers[guild.Id]);
+                                });
                             }
                             break;
                         case "guild_delete":
                             {
                                 var guild = payload.As<GuildModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    interfaces.OnServerLeft(Servers[guild.Id]);
+                                    Servers.Remove(guild.Id);
+                                });
                             }
                             break;
                         case "guild_ban_add":
                             {
                                 var guildBan = payload.As<GuildBanModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    Servers[guildBan.GuildId].Bans[guildBan.User.Id] = new DiscordUser(guildBan.User);
+                                    interfaces.OnServerBan(Servers[guildBan.GuildId], Servers[guildBan.GuildId].Bans[guildBan.User.Id]);
+                                });
                             }
                             break;
                         case "guild_ban_remove":
                             {
                                 var guildBan = payload.As<GuildBanModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    interfaces.OnServerUnban(Servers[guildBan.GuildId], Servers[guildBan.GuildId].Bans[guildBan.User.Id]);
+                                    Servers[guildBan.GuildId].Bans.Remove(guildBan.User.Id);
+                                });
                             }
                             break;
                         case "guild_emojis_update":
                             {
                                 var guildEmojis = payload.As<GuildEmojisModel>().Data;
+                                Servers[guildEmojis.GuildId].Emojis = guildEmojis.Emojis.ToDictionary(x => x.Id, x => new DiscordEmoji(x));
                             }
                             break;
                         case "guild_member_add":
                             {
                                 var guildMember = payload.As<GuildMemberModel>().Data;
+                                Servers[guildMember.GuildId].Members[guildMember.User.Id] = new DiscordServerMember(guildMember, Servers[guildMember.GuildId]);
                             }
                             break;
                         case "guild_member_remove":
                             {
                                 var guildMember = payload.As<GuildMemberModel>().Data;
+                                Servers[guildMember.GuildId].Members.Remove(guildMember.User.Id);
                             }
                             break;
                         case "guild_member_update":
                             {
                                 var guildMember = payload.As<GuildMemberModel>().Data;
+                                Servers[guildMember.GuildId].Members[guildMember.User.Id] = new DiscordServerMember(guildMember, Servers[guildMember.GuildId]);
                             }
                             break;
                         case "guild_members_chunk":
@@ -428,16 +533,19 @@ namespace DiscordUnity2
                         case "guild_role_create":
                             {
                                 var guildRole = payload.As<GuildRoleModel>().Data;
+                                Servers[guildRole.GuildId].Roles[guildRole.Role.Id] = new DiscordRole(guildRole.Role);
                             }
                             break;
                         case "guild_role_update":
                             {
                                 var guildRole = payload.As<GuildRoleModel>().Data;
+                                Servers[guildRole.GuildId].Roles[guildRole.Role.Id] = new DiscordRole(guildRole.Role);
                             }
                             break;
                         case "guild_role_delete":
                             {
                                 var guildRoleId = payload.As<GuildRoleIdModel>().Data;
+                                Servers[guildRoleId.GuildId].Roles.Remove(guildRoleId.RoleId);
                             }
                             break;
 
@@ -446,11 +554,13 @@ namespace DiscordUnity2
                         case "invite_create":
                             {
                                 var invite = payload.As<InviteModel>().Data;
+                                Servers[invite.GuildId].Invites[invite.Code] = new DiscordInvite(invite);
                             }
                             break;
                         case "invite_delete":
                             {
                                 var invite = payload.As<InviteModel>().Data;
+                                Servers[invite.GuildId].Invites.Remove(invite.Code);
                             }
                             break;
 
@@ -459,16 +569,31 @@ namespace DiscordUnity2
                         case "message_create":
                             {
                                 var message = payload.As<MessageModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    interfaces.OnMessageCreated(new DiscordMessage(message));
+                                });
                             }
                             break;
                         case "message_update":
                             {
                                 var message = payload.As<MessageModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    interfaces.OnMessageUpdated(new DiscordMessage(message));
+                                });
                             }
                             break;
                         case "message_delete":
                             {
                                 var message = payload.As<MessageModel>().Data;
+
+                                Sync(() =>
+                                {
+                                    interfaces.OnMessageDeleted(new DiscordMessage(message));
+                                });
                             }
                             break;
                         case "message_delete_bulk":

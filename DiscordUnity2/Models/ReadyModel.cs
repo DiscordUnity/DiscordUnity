@@ -7,8 +7,8 @@ namespace DiscordUnity2.Models
         [JsonProperty("v")]
         public int Version { get; set; }
         public UserModel User { get; set; }
-        public object[] PrivateChannels { get; set; }
-        public GuildModel[] Servers { get; set; }
+        public ChannelModel[] PrivateChannels { get; set; }
+        public GuildModel[] Guilds { get; set; }
         public string SessionId { get; set; }
         public int[] Shard { get; set; }
     }

@@ -11,7 +11,7 @@ namespace DiscordUnity2.Models
         public UserModel Inviter { get; set; }
         public int MaxAge { get; set; }
         public int MaxUses { get; set; }
-        public UserModel Targetuser { get; set; }
+        public UserModel TargetUser { get; set; }
         public int TargetUserType { get; set; }
         public bool Temporary { get; set; }
         public int Uses { get; set; }

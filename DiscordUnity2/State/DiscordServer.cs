@@ -1,5 +1,7 @@
 ﻿using DiscordUnity2.Models;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace DiscordUnity2.State
 {
@@ -21,8 +23,8 @@ namespace DiscordUnity2.State
         public int VerificationLevel { get; internal set; }
         public int DefaultMessageNotifications { get; internal set; }
         public int ExplicitContentFilter { get; internal set; }
-        public DiscordRole[] Roles { get; internal set; }
-        public DiscordEmoji[] Emojis { get; internal set; }
+        public Dictionary<string, DiscordRole> Roles { get; internal set; }
+        public Dictionary<string, DiscordEmoji> Emojis { get; internal set; }
         public GuildFeature[] Features { get; internal set; }
         public int MfaLevel { get; internal set; }
         public string ApplicationId { get; internal set; }
@@ -35,10 +37,10 @@ namespace DiscordUnity2.State
         public bool? Large { get; internal set; }
         public bool? Unavailable { get; internal set; }
         public int? MemberCount { get; internal set; }
-        public DiscordVoiceState[] VoiceStates { get; internal set; }
-        public DiscordServerMember[] Members { get; internal set; }
-        public DiscordChannel[] Channels { get; internal set; }
-        public DiscordPresence[] Presences { get; internal set; }
+        public Dictionary<string, DiscordVoiceState> VoiceStates { get; internal set; }
+        public Dictionary<string, DiscordServerMember> Members { get; internal set; }
+        public Dictionary<string, DiscordChannel> Channels { get; internal set; }
+        public Dictionary<string, DiscordPresence> Presences { get; internal set; }
         public int? MaxPresences { get; internal set; }
         public int? MaxMembers { get; internal set; }
         public string VanityUrlCode { get; internal set; }
@@ -51,10 +53,64 @@ namespace DiscordUnity2.State
         public int MaxVideoChannelUsers { get; internal set; }
         public int ApproximateMemberCount { get; internal set; }
         public int ApproximatePresenceCount { get; internal set; }
+        public Dictionary<string, DiscordInvite> Invites { get; internal set; }
+        public Dictionary<string, DiscordUser> Bans { get; internal set; }
 
         internal DiscordServer(GuildModel model)
         {
-            
+            Id = model.Id;
+            Name = model.Name;
+            Icon = model.Icon;
+            Splash = model.Splash;
+            DiscoverySplash = model.DiscoverySplash;
+            IsOwner = model.Owner ?? false;
+            Roles = model.Roles?.ToDictionary(x => x.Id, x => new DiscordRole(x));
+            Members = model.Members?.ToDictionary(x => x.User.Id, x => new DiscordServerMember(x, this));
+            if (!string.IsNullOrEmpty(model.OwnerId)) Owner = Members[model.OwnerId];
+            Permissions = model.Permissions;
+            Region = model.Region;
+            Channels = model.Channels?.ToDictionary(x => x.Id, x => new DiscordChannel(x, this));
+            if (!string.IsNullOrEmpty(model.AfkChannelId)) AfkChannel = Channels[model.AfkChannelId];
+            AfkTimeout = model.AfkTimeout;
+            EmbedEnabled = model.EmbedEnabled ?? false;
+            if (!string.IsNullOrEmpty(model.EmbedChannelId)) EmbedChannel = Channels[model.EmbedChannelId];
+            VerificationLevel = model.VerificationLevel;
+            DefaultMessageNotifications = model.DefaultMessageNotifications;
+            ExplicitContentFilter = model.ExplicitContentFilter;
+            Emojis = model.Emojis?.ToDictionary(x => x.Id, x => new DiscordEmoji(x));
+            Features = model.Features;
+            MfaLevel = model.MfaLevel;
+            ApplicationId = model.ApplicationId;
+            WidgetEnabled = model.WidgetEnabled ?? false;
+            if (!string.IsNullOrEmpty(model.WidgetChannelId)) WidgetChannel = Channels[model.WidgetChannelId];
+            if (!string.IsNullOrEmpty(model.SystemChannelId)) SystemChannel = Channels[model.SystemChannelId];
+            SystemChannelFlags = model.SystemChannelFlags;
+            if (!string.IsNullOrEmpty(model.RulesChannelId)) RulesChannel = Channels[model.RulesChannelId];
+            JoinedAt = model.JoinedAt;
+            Large = model.Large ?? false;
+            Unavailable = model.Unavailable ?? false;
+            MemberCount = model.MemberCount;
+            VoiceStates = model.VoiceStates?.ToDictionary(x => x.Member.User.Id, x => new DiscordVoiceState(x, this));
+            Presences = model.Presences?.ToDictionary(x => x.User.Id, x => new DiscordPresence(x, this));
+            MaxPresences = model.MaxPresences;
+            MaxMembers = model.MaxMembers;
+            VanityUrlCode = model.VanityUrlCode;
+            Description = model.Description;
+            Banner = model.Banner;
+            PremiumTier = model.PremiumTier;
+            PremiumSubscriptionCount = model.PremiumSubscriptionCount;
+            PreferredLocale = model.PreferredLocale;
+            if (!string.IsNullOrEmpty(model.PublicUpdatesChannelId)) PublicUpdatesChannel = Channels[model.PublicUpdatesChannelId];
+            MaxVideoChannelUsers = model.MaxVideoChannelUsers;
+            ApproximateMemberCount = model.ApproximateMemberCount;
+            ApproximatePresenceCount = model.ApproximatePresenceCount;
+            Invites = new Dictionary<string, DiscordInvite>();
+            Bans = new Dictionary<string, DiscordUser>();
+
+            if (model.Channels != null)
+                foreach (var channel in model.Channels)
+                    if (!string.IsNullOrEmpty(channel.ParentId))
+                        Channels[channel.Id] = Channels[channel.ParentId];
         }
     }
 
@@ -62,15 +118,21 @@ namespace DiscordUnity2.State
     {
         public DiscordUser User { get; internal set; }
         public string Nick { get; internal set; }
-        public DiscordRole Roles { get; internal set; }
+        public DiscordRole[] Roles { get; internal set; }
         public DateTime JoinedAt { get; internal set; }
         public DateTime? PremiumSince { get; internal set; }
         public bool Deaf { get; internal set; }
         public bool Mute { get; internal set; }
 
-        internal DiscordServerMember(GuildMemberModel model)
+        internal DiscordServerMember(GuildMemberModel model, DiscordServer server)
         {
-            
+            User = new DiscordUser(model.User);
+            Nick = model.Nick;
+            Roles = model.Roles?.Select(x => server.Roles[x]).ToArray();
+            JoinedAt = model.JoinedAt;
+            PremiumSince = model.PremiumSince;
+            Deaf = model.Deaf;
+            Mute = model.Mute;
         }
     }
 }

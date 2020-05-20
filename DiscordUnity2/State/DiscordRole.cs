@@ -15,7 +15,14 @@ namespace DiscordUnity2.State
 
         internal DiscordRole(RoleModel model)
         {
-            
+            Id = model.Id;
+            Name = model.Name;
+            Color = model.Color;
+            Hoist = model.Hoist;
+            Position = model.Position;
+            Permissions = model.Permissions;
+            Managed = model.Managed;
+            Mentionable = model.Mentionable;
         }
     }
 }

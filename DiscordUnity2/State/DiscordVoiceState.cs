@@ -16,9 +16,35 @@ namespace DiscordUnity2.State
         public bool? SelfStream { get; internal set; }
         public bool Suppress { get; internal set; }
 
-        internal DiscordVoiceState(VoiceStateModel model)
+        internal DiscordVoiceState(VoiceStateModel model, DiscordServer server = null)
         {
-            
+            if (server != null) Server = server;
+
+            else
+            {
+                if (string.IsNullOrEmpty(model.GuildId))
+                {
+                    Server = null;
+                    Channel = DiscordAPI.PrivateChannels[model.ChannelId];
+                }
+
+                else
+                {
+                    Server = DiscordAPI.Servers[model.GuildId];
+                    Channel = Server.Channels[model.ChannelId];
+                }
+            }
+
+            Channel = Server.Channels[model.ChannelId];
+            User = Channel.Recipients[model.UserId];
+            if (model.Member != null) Member = new DiscordServerMember(model.Member, Server);
+            SessionId = model.SessionId;
+            Deaf = model.Deaf;
+            Mute = model.Mute;
+            SelfDeaf = model.SelfDeaf;
+            SelfMute = model.SelfMute;
+            SelfStream = model.SelfStream;
+            Suppress = model.Suppress;
         }
     }
 }

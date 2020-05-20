@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Text;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -15,6 +16,21 @@ namespace DiscordUnity2
             try
             {
                 return RestResult<T>.FromResult(JsonConvert.DeserializeObject<T>(await Client.GetStringAsync(API + endpoint)));
+            }
+
+            catch (Exception e)
+            {
+                return RestResult<T>.FromException(e);
+            }
+        }
+
+        private static async Task<RestResult<T>> Post<T>(string endpoint, object obj)
+        {
+            try
+            {
+                var result = await Client.PostAsync(API + endpoint, new StringContent(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json"));
+                if (!result.IsSuccessStatusCode) throw new Exception(result.ReasonPhrase);
+                return RestResult<T>.FromResult(JsonConvert.DeserializeObject<T>(await result.Content.ReadAsStringAsync()));
             }
 
             catch (Exception e)

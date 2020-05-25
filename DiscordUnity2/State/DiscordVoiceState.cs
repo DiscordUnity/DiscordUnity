@@ -4,8 +4,8 @@ namespace DiscordUnity2.State
 {
     public class DiscordVoiceState
     {
-        public DiscordServer Server { get; internal set; }
-        public DiscordChannel Channel { get; internal set; }
+        public DiscordServer Server => string.IsNullOrEmpty(GuildId) ? null : DiscordAPI.Servers[GuildId];
+        public DiscordChannel Channel => string.IsNullOrEmpty(GuildId) ? DiscordAPI.PrivateChannels[ChannelId] : Server.Channels[ChannelId];
         public DiscordUser User { get; internal set; }
         public DiscordServerMember Member { get; internal set; }
         public string SessionId { get; internal set; }
@@ -16,28 +16,15 @@ namespace DiscordUnity2.State
         public bool? SelfStream { get; internal set; }
         public bool Suppress { get; internal set; }
 
-        internal DiscordVoiceState(VoiceStateModel model, DiscordServer server = null)
+        private readonly string GuildId;
+        private readonly string ChannelId;
+
+        internal DiscordVoiceState(VoiceStateModel model)
         {
-            if (server != null) Server = server;
-
-            else
-            {
-                if (string.IsNullOrEmpty(model.GuildId))
-                {
-                    Server = null;
-                    Channel = DiscordAPI.PrivateChannels[model.ChannelId];
-                }
-
-                else
-                {
-                    Server = DiscordAPI.Servers[model.GuildId];
-                    Channel = Server.Channels[model.ChannelId];
-                }
-            }
-
-            Channel = Server.Channels[model.ChannelId];
+            GuildId = model.GuildId;
+            ChannelId = model.ChannelId;
             User = Channel.Recipients[model.UserId];
-            if (model.Member != null) Member = new DiscordServerMember(model.Member, Server);
+            if (model.Member != null) Member = new DiscordServerMember(model.Member);
             SessionId = model.SessionId;
             Deaf = model.Deaf;
             Mute = model.Mute;

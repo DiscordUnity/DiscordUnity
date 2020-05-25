@@ -7,33 +7,23 @@ namespace DiscordUnity2.State
     public class DiscordPresence
     {
         public DiscordUser User { get; internal set; }
-        public DiscordRole[] Roles { get; internal set; }
+        public DiscordRole[] Roles => RoleIds?.Select(x => Server.Roles[x]).ToArray();
         public DiscordActivity Game { get; internal set; }
-        public DiscordServer Server { get; internal set; }
+        public DiscordServer Server => DiscordAPI.Servers[GuildId];
         public PresenceStatus Status { get; internal set; }
         public DiscordActivity[] Activities { get; internal set; }
         public DiscordClientStatus ClientStatus { get; internal set; }
         public DateTime? PremiumSince { get; internal set; }
         public string Nick { get; internal set; }
 
+        private readonly string GuildId;
+        private readonly string[] RoleIds;
+
         internal DiscordPresence(PresenceModel model)
         {
             User = new DiscordUser(model.User);
-            Server = DiscordAPI.Servers[model.GuildId];
-            Roles = model.Roles?.Select(x => Server.Roles[x]).ToArray();
-            if (model.Game != null) Game = new DiscordActivity(model.Game);
-            Status = model.Status;
-            Activities = model.Activities?.Select(x => new DiscordActivity(x)).ToArray();
-            if (model.ClientStatus != null) ClientStatus = new DiscordClientStatus(model.ClientStatus);
-            PremiumSince = model.PremiumSince;
-            Nick = model.Nick;
-        }
-
-        internal DiscordPresence(PresenceModel model, DiscordServer server)
-        {
-            User = new DiscordUser(model.User);
-            Server = server;
-            Roles = model.Roles?.Select(x => Server.Roles[x]).ToArray();
+            GuildId = model.GuildId;
+            RoleIds = model.Roles;
             if (model.Game != null) Game = new DiscordActivity(model.Game);
             Status = model.Status;
             Activities = model.Activities?.Select(x => new DiscordActivity(x)).ToArray();

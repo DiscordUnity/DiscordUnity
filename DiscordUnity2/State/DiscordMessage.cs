@@ -6,8 +6,8 @@ namespace DiscordUnity2.State
     public class DiscordMessage
     {
         public string Id { get; internal set; }
-        public DiscordChannel Channel { get; internal set; }
-        public DiscordServer Server { get; internal set; }
+        public DiscordServer Server => string.IsNullOrEmpty(GuildId) ? null : DiscordAPI.Servers[GuildId];
+        public DiscordChannel Channel => string.IsNullOrEmpty(GuildId) ? DiscordAPI.PrivateChannels[ChannelId] : Server.Channels[ChannelId];
         public DiscordUser Author { get; internal set; }
         public string Content { get; internal set; }
         public DateTime Timestamp { get; internal set; }
@@ -16,22 +16,14 @@ namespace DiscordUnity2.State
         public bool MentionEveryone { get; internal set; }
         public MessageType Type { get; internal set; }
 
+        private readonly string GuildId;
+        private readonly string ChannelId;
+
         internal DiscordMessage(MessageModel model)
         {
             Id = model.Id;
-
-            if (string.IsNullOrEmpty(model.GuildId))
-            {
-                Server = null;
-                Channel = DiscordAPI.PrivateChannels[model.ChannelId];
-            }
-
-            else
-            {
-                Server = DiscordAPI.Servers[model.GuildId];
-                Channel = Server.Channels[model.ChannelId];
-            }
-
+            GuildId = model.GuildId;
+            ChannelId = model.ChannelId;
             if (model.Author != null) Author = new DiscordUser(model.Author);
             Content = model.Content;
             Timestamp = model.Timestamp;

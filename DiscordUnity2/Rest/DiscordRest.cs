@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Web;
 using System.Text;
+using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 
@@ -11,24 +13,24 @@ namespace DiscordUnity2
         internal const string API = "https://discord.com/api";
         internal static HttpClient Client;
 
-        private static async Task<RestResult<T>> Get<T>(string endpoint)
+        private static async Task<RestResult<T>> Http<T>(HttpMethod method, string endpoint, object obj = null, object query = null)
         {
             try
             {
-                return RestResult<T>.FromResult(JsonConvert.DeserializeObject<T>(await Client.GetStringAsync(API + endpoint)));
-            }
+                string q = null;
 
-            catch (Exception e)
-            {
-                return RestResult<T>.FromException(e);
-            }
-        }
+                if (query != null)
+                {
+                    var properties = from p in query.GetType().GetProperties()
+                                     where p.GetValue(query, null) != null
+                                     select p.Name + "=" + HttpUtility.UrlEncode(p.GetValue(query, null).ToString());
 
-        private static async Task<RestResult<T>> Post<T>(string endpoint, object obj)
-        {
-            try
-            {
-                var result = await Client.PostAsync(API + endpoint, new StringContent(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json"));
+                    q = string.Join("&", properties.ToArray());
+                }
+
+                var request = new HttpRequestMessage(method, API + endpoint + (string.IsNullOrEmpty(q) ? "" : "?" + q));
+                if (obj != null) request.Content = new StringContent(JsonConvert.SerializeObject(obj), Encoding.UTF8, "application/json");
+                var result = await Client.SendAsync(request);
                 if (!result.IsSuccessStatusCode) throw new Exception(result.ReasonPhrase);
                 return RestResult<T>.FromResult(JsonConvert.DeserializeObject<T>(await result.Content.ReadAsStringAsync()));
             }
@@ -37,6 +39,22 @@ namespace DiscordUnity2
             {
                 return RestResult<T>.FromException(e);
             }
+        }
+
+        private static Task<RestResult<T>> Get<T>(string endpoint, object query = null) => Http<T>(HttpMethod.Get, endpoint, null, query);
+        private static Task<RestResult<T>> Patch<T>(string endpoint, object obj, object query = null) => Http<T>(new HttpMethod("PATCH"), endpoint, obj, query);
+        private static Task<RestResult<T>> Post<T>(string endpoint, object obj, object query = null) => Http<T>(HttpMethod.Post, endpoint, obj, query);
+        private static Task<RestResult<T>> Delete<T>(string endpoint, object query = null) => Http<T>(HttpMethod.Delete, endpoint, null, query);
+        
+        private static async Task<RestResult<R>> SyncInherit<T, R>(Task<RestResult<T>> call, Func<T, R> transform)
+        {
+            var task = new TaskCompletionSource<RestResult<R>>();
+            var result = await call;
+
+            if (result) Sync(() => task.SetResult(RestResult<R>.FromResult(transform(result.Data))));
+            else Sync(() => task.SetResult(RestResult<R>.FromException(result.Exception)));
+
+            return await task.Task;
         }
     }
 

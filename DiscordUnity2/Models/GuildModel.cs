@@ -106,11 +106,6 @@ namespace DiscordUnity2.Models
         public string RoleId { get; set; }
     }
 
-    internal class GuildIntegrationsModel
-    {
-        public string GuildId { get; set; }
-    }
-
     internal class GuildMembersChunkModel
     {
         public string GuildId { get; set; }

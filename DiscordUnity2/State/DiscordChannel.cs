@@ -10,7 +10,7 @@ namespace DiscordUnity2.State
     {
         public string Id { get; internal set; }
         public ChannelType Type { get; internal set; }
-        public DiscordServer Server { get; internal set; }
+        public DiscordServer Server => string.IsNullOrEmpty(GuildId) ? null : DiscordAPI.Servers[GuildId];
         public int? Position { get; internal set; }
         public DiscordOverwrite[] PermissionOverwrites { get; internal set; }
         public string Name { get; internal set; }
@@ -27,12 +27,13 @@ namespace DiscordUnity2.State
         public DiscordChannel Parent { get; internal set; }
         public DateTime? LastPinTimestamp { get; internal set; }
 
-        internal DiscordChannel(ChannelModel model, DiscordServer server = null)
+        private readonly string GuildId;
+
+        internal DiscordChannel(ChannelModel model)
         {
             Id = model.Id;
             Type = model.Type;
-            if (server != null) Server = server;
-            else if (!string.IsNullOrEmpty(model.GuildId)) Server = DiscordAPI.Servers[model.GuildId];
+            GuildId = model.GuildId;
             Position = model.Position;
             Topic = model.Topic;
             Nsfw = model.Nsfw;

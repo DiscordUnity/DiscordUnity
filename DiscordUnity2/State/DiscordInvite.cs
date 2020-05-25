@@ -5,10 +5,10 @@ namespace DiscordUnity2.State
 {
     public class DiscordInvite
     {
-        public DiscordChannel Channel { get; internal set; }
         public string Code { get; internal set; }
         public DateTime CreatedAt { get; internal set; }
-        public DiscordServer Server { get; internal set; }
+        public DiscordServer Server => string.IsNullOrEmpty(GuildId) ? null : DiscordAPI.Servers[GuildId];
+        public DiscordChannel Channel => string.IsNullOrEmpty(GuildId) ? DiscordAPI.PrivateChannels[ChannelId] : Server.Channels[ChannelId];
         public DiscordUser Inviter { get; internal set; }
         public int MaxAge { get; internal set; }
         public int MaxUses { get; internal set; }
@@ -17,10 +17,13 @@ namespace DiscordUnity2.State
         public bool Temporary { get; internal set; }
         public int Uses { get; internal set; }
 
+        private readonly string GuildId;
+        private readonly string ChannelId;
+
         internal DiscordInvite(InviteModel model)
         {
-            Server = DiscordAPI.Servers[model.GuildId];
-            Channel = Server.Channels[model.ChannelId];
+            GuildId = model.GuildId;
+            ChannelId = model.ChannelId;
             Code = model.Code;
             CreatedAt = model.CreatedAt;
             if (model.Inviter != null) Inviter = new DiscordUser(model.Inviter);

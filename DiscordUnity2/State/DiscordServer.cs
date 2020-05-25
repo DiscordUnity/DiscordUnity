@@ -65,11 +65,11 @@ namespace DiscordUnity2.State
             DiscoverySplash = model.DiscoverySplash;
             IsOwner = model.Owner ?? false;
             Roles = model.Roles?.ToDictionary(x => x.Id, x => new DiscordRole(x));
-            Members = model.Members?.ToDictionary(x => x.User.Id, x => new DiscordServerMember(x, this));
+            Members = model.Members?.ToDictionary(x => x.User.Id, x => new DiscordServerMember(x));
             if (!string.IsNullOrEmpty(model.OwnerId)) Owner = Members[model.OwnerId];
             Permissions = model.Permissions;
             Region = model.Region;
-            Channels = model.Channels?.ToDictionary(x => x.Id, x => new DiscordChannel(x, this));
+            Channels = model.Channels?.ToDictionary(x => x.Id, x => new DiscordChannel(x));
             if (!string.IsNullOrEmpty(model.AfkChannelId)) AfkChannel = Channels[model.AfkChannelId];
             AfkTimeout = model.AfkTimeout;
             EmbedEnabled = model.EmbedEnabled ?? false;
@@ -90,8 +90,8 @@ namespace DiscordUnity2.State
             Large = model.Large ?? false;
             Unavailable = model.Unavailable ?? false;
             MemberCount = model.MemberCount;
-            VoiceStates = model.VoiceStates?.ToDictionary(x => x.Member.User.Id, x => new DiscordVoiceState(x, this));
-            Presences = model.Presences?.ToDictionary(x => x.User.Id, x => new DiscordPresence(x, this));
+            VoiceStates = model.VoiceStates?.ToDictionary(x => x.Member.User.Id, x => new DiscordVoiceState(x));
+            Presences = model.Presences?.ToDictionary(x => x.User.Id, x => new DiscordPresence(x));
             MaxPresences = model.MaxPresences;
             MaxMembers = model.MaxMembers;
             VanityUrlCode = model.VanityUrlCode;
@@ -118,17 +118,22 @@ namespace DiscordUnity2.State
     {
         public DiscordUser User { get; internal set; }
         public string Nick { get; internal set; }
-        public DiscordRole[] Roles { get; internal set; }
+        public DiscordServer Server => string.IsNullOrEmpty(GuildId) ? null : DiscordAPI.Servers[GuildId];
+        public DiscordRole[] Roles => RoleIds?.Select(x => Server.Roles[x]).ToArray();
         public DateTime JoinedAt { get; internal set; }
         public DateTime? PremiumSince { get; internal set; }
         public bool Deaf { get; internal set; }
         public bool Mute { get; internal set; }
 
-        internal DiscordServerMember(GuildMemberModel model, DiscordServer server)
+        private readonly string GuildId;
+        private readonly string[] RoleIds;
+
+        internal DiscordServerMember(GuildMemberModel model)
         {
+            GuildId = model.GuildId;
             User = new DiscordUser(model.User);
             Nick = model.Nick;
-            Roles = model.Roles?.Select(x => server.Roles[x]).ToArray();
+            RoleIds = model.Roles;
             JoinedAt = model.JoinedAt;
             PremiumSince = model.PremiumSince;
             Deaf = model.Deaf;

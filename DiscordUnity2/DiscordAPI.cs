@@ -3,6 +3,7 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Text;
+using System.Linq;
 using System.Net.Http;
 using System.Threading;
 using System.Net.WebSockets;
@@ -10,17 +11,16 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using DiscordUnity2.API;
 using DiscordUnity2.State;
-using System.Linq;
 
 namespace DiscordUnity2
 {
-    // Finish Internal Models
-    // - Audio Logs
-    // - Invite
     // Finish Http Calls
     // - All calls
+    // Finish Internal Models
+    // - AuditLogChangeKey?
     // Finish State
-    // - More states
+    // - More and better states
+    // - Fill in easy access methods to Http Calls
 
     public static partial class DiscordAPI
     {

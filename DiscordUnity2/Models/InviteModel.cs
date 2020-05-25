@@ -15,5 +15,7 @@ namespace DiscordUnity2.Models
         public int TargetUserType { get; set; }
         public bool Temporary { get; set; }
         public int Uses { get; set; }
+        public int? ApproximatePresenceCount { get; set; }
+        public int? ApproximateMemberCount { get; set; }
     }
 }

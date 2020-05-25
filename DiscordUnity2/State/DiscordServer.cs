@@ -110,7 +110,7 @@ namespace DiscordUnity2.State
             if (model.Channels != null)
                 foreach (var channel in model.Channels)
                     if (!string.IsNullOrEmpty(channel.ParentId))
-                        Channels[channel.Id] = Channels[channel.ParentId];
+                        Channels[channel.Id].Parent = Channels[channel.ParentId];
         }
     }
 

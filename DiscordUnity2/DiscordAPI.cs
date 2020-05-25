@@ -510,7 +510,7 @@ namespace DiscordUnity2
                         case "guild_member_add":
                             {
                                 var guildMember = payload.As<GuildMemberModel>().Data;
-                                Servers[guildMember.GuildId].Members[guildMember.User.Id] = new DiscordServerMember(guildMember, Servers[guildMember.GuildId]);
+                                Servers[guildMember.GuildId].Members[guildMember.User.Id] = new DiscordServerMember(guildMember);
                             }
                             break;
                         case "guild_member_remove":
@@ -522,7 +522,7 @@ namespace DiscordUnity2
                         case "guild_member_update":
                             {
                                 var guildMember = payload.As<GuildMemberModel>().Data;
-                                Servers[guildMember.GuildId].Members[guildMember.User.Id] = new DiscordServerMember(guildMember, Servers[guildMember.GuildId]);
+                                Servers[guildMember.GuildId].Members[guildMember.User.Id] = new DiscordServerMember(guildMember);
                             }
                             break;
                         case "guild_members_chunk":

@@ -1,8 +1,11 @@
 ﻿using DiscordUnity2;
+using DiscordUnity2.API;
+using DiscordUnity2.State;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 
 namespace DiscordUnity2Tests
@@ -33,6 +36,7 @@ namespace DiscordUnity2Tests
                 }
 
                 await DiscordAPI.StartWithBot(token);
+                DiscordAPI.RegisterEventsHandler(new Handler());
                 Console.WriteLine("DiscordUnity Started: " + (Thread.CurrentThread == thread));
             }
 
@@ -44,6 +48,74 @@ namespace DiscordUnity2Tests
             DiscordAPI.Stop();
 
             Console.ReadKey();
+        }
+
+        class Handler : IDiscordServerEvents
+        {
+            public void OnServerBan(DiscordServer server, DiscordUser user)
+            {
+
+            }
+
+            public void OnServerEmojisUpdated(DiscordServer server, DiscordEmoji[] emojis)
+            {
+
+            }
+
+            public void OnServerJoined(DiscordServer server)
+            {
+                server.Channels.Values.FirstOrDefault(x => x.Type == DiscordUnity2.Models.ChannelType.GUILD_TEXT)?.CreateMessage("Hello World!", null, null, null, null, null, null);
+            }
+
+            public void OnServerLeft(DiscordServer server)
+            {
+
+            }
+
+            public void OnServerMemberJoined(DiscordServer server, DiscordServerMember member)
+            {
+
+            }
+
+            public void OnServerMemberLeft(DiscordServer server, DiscordServerMember member)
+            {
+
+            }
+
+            public void OnServerMembersChunk(DiscordServer server, DiscordServerMember[] members, string[] notFound, DiscordPresence[] presences)
+            {
+
+            }
+
+            public void OnServerMemberUpdated(DiscordServer server, DiscordServerMember member)
+            {
+
+            }
+
+            public void OnServerRoleCreated(DiscordServer server, DiscordRole role)
+            {
+
+            }
+
+            public void OnServerRoleRemove(DiscordServer server, DiscordRole role)
+            {
+
+            }
+
+            public void OnServerRoleUpdated(DiscordServer server, DiscordRole role)
+            {
+
+            }
+
+            public void OnServerUnban(DiscordServer server, DiscordUser user)
+            {
+
+            }
+
+            public void OnServerUpdated(DiscordServer server)
+            {
+
+            }
         }
 
         class Logger : ILogger

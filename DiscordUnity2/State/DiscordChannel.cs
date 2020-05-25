@@ -48,8 +48,8 @@ namespace DiscordUnity2.State
             LastPinTimestamp = model.LastPinTimestamp;
         }
 
-        public Task<RestResult<DiscordMessage>> CreateMessage(string content, string nonce = null, bool tts = false)
-            => DiscordAPI.CreateMessage(Id, content, nonce, tts);
+        public Task<RestResult<DiscordMessage>> CreateMessage(string content, string nonce, bool? tts, object file, object embed, string payload_json, object allowed_mentions)
+            => DiscordAPI.CreateMessage(Id, content, nonce, tts, file, embed, payload_json, allowed_mentions);
     }
 
     public class DiscordOverwrite

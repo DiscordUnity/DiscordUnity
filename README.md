@@ -1,7 +1,7 @@
 # DISCLAIMER This library is in progress of being updated after a freeze of 3 years.
 
 # DiscordUnity
-A DiscordAPI made for Unity and only usable for Unity. It contains special features to make it all work.
+A DiscordAPI made for Unity but also usable as a standalone .NET Standard library.
 
 ### INSTALLATION
 - Open your UnityProject where you want to install DiscordUnity.

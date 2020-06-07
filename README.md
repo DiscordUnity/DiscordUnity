@@ -1,12 +1,12 @@
-# DISCLAIMER This library is being updated after a leap of 3 years.
+# DISCLAIMER This library is in progress of being updated after a freeze of 3 years.
 
 # DiscordUnity
 A DiscordAPI made for Unity and only usable for Unity. It contains special features to make it all work.
 
 ### INSTALLATION
-- Open the UnityProject where you want DiscordUnity.
-- Double click DiscordUnity.unitypackage.
-- Import the assets and you're set to go.
+- Open your UnityProject where you want to install DiscordUnity.
+- Double click DiscordUnity.unitypackage from this repository.
+- Import the assets and you're set to go with DiscordManager as example.
 
 ### HOW TO USE
 I've put a very simple example demo to show of some basics off the api. Look inside script folder after DiscordExample.cs. 

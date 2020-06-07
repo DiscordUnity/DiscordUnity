@@ -44,6 +44,7 @@ namespace DiscordUnity2
         private static Task<RestResult<T>> Get<T>(string endpoint, object query = null) => Http<T>(HttpMethod.Get, endpoint, null, query);
         private static Task<RestResult<T>> Patch<T>(string endpoint, object obj, object query = null) => Http<T>(new HttpMethod("PATCH"), endpoint, obj, query);
         private static Task<RestResult<T>> Post<T>(string endpoint, object obj, object query = null) => Http<T>(HttpMethod.Post, endpoint, obj, query);
+        private static Task<RestResult<T>> Put<T>(string endpoint, object obj, object query = null) => Http<T>(HttpMethod.Put, endpoint, obj, query);
         private static Task<RestResult<T>> Delete<T>(string endpoint, object query = null) => Http<T>(HttpMethod.Delete, endpoint, null, query);
         
         private static async Task<RestResult<R>> SyncInherit<T, R>(Task<RestResult<T>> call, Func<T, R> transform)

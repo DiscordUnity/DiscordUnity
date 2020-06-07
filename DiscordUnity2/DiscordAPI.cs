@@ -15,7 +15,7 @@ using DiscordUnity2.State;
 namespace DiscordUnity2
 {
     // Finish Http Calls
-    // - All calls
+    // - Extra guild calls and some others
     // Finish Internal Models
     // - AuditLogChangeKey?
     // Finish State

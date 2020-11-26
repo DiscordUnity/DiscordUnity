@@ -1,4 +1,4 @@
-# DISCLAIMER This library is in progress of being updated after a freeze of 3 years.
+# DISCLAIMER This library is not being further developed since Unity applications should not be used to host bots or give user access to Discord within a game or distrbuted application. To access Discord from a distributed Unity application interface, you can use the Discord game SDK. If you have a special usecase however to use this library, feel free to fork and update the library as needed since I don't expect everything to keep working.
 
 # DiscordUnity
 A DiscordAPI made for Unity but also usable as a standalone .NET Standard library.
